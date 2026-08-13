@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>四季度供应覆盖管理工具</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.5;color:#333;background:#f0f2f5}
+.header{background:linear-gradient(135deg,#1a8a6e 0%,#1db88a 100%);padding:16px 32px;display:flex;justify-content:space-between;align-items:center;color:#fff}
+.header-left{display:flex;align-items:center;gap:14px}
+.header-icon{width:42px;height:42px;background:rgba(255,255,255,.2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px}
+.header-title{font-size:20px;font-weight:700;letter-spacing:.5px}
+.header-sub{font-size:12px;opacity:.8;margin-top:2px}
+.header-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.btn-h{padding:7px 16px;border-radius:6px;font-size:13px;cursor:pointer;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.15);color:#fff;display:inline-flex;align-items:center;gap:5px;transition:background .2s;white-space:nowrap}
+.btn-h:hover{background:rgba(255,255,255,.28)}
+.btn-err{border-color:#ff6b6b;color:#ff6b6b;background:rgba(255,107,107,.12)}
+.btn-ok{border-color:#4ade80;color:#4ade80;background:rgba(74,222,128,.12)}
+.btn-imp{background:#fff;color:#1a8a6e;border:none;font-weight:600}
+.btn-imp:hover{background:#f0f0f0}
+.main{padding:20px 24px;max-width:1800px;margin:0 auto}
+.stats-row{display:flex;gap:20px;margin-bottom:20px}
+.stat-card{flex:1;background:#fff;border-radius:12px;padding:22px 26px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.stat-info{flex:1}
+.stat-label{font-size:13px;color:#888;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.si{width:28px;height:28px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:14px}
+.si-g{background:#e8f8f2;color:#1a8a6e}
+.si-r{background:#fff0f0;color:#e74c3c}
+.stat-val{font-size:38px;font-weight:700;color:#1a1a1a;line-height:1.1}
+.stat-desc{font-size:12px;color:#999;margin-top:6px}
+.stat-right{text-align:right}
+.stat-right a{color:#e74c3c;font-size:13px;text-decoration:none;cursor:pointer}
+.stat-right a:hover{text-decoration:underline}
+.ring{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;margin-left:20px}
+.ring::after{content:'';position:absolute;width:62px;height:62px;border-radius:50%;background:#fff}
+.ring span{position:relative;z-index:1;font-size:22px;font-weight:700;color:#1a8a6e}
+.filter-bar{background:#fff;border-radius:12px;padding:14px 20px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.search-box{flex:1;min-width:200px;position:relative}
+.search-box input{width:100%;padding:8px 14px 8px 36px;border:1px solid #ddd;border-radius:8px;font-size:13px;outline:none}
+.search-box input:focus{border-color:#1a8a6e}
+.search-box .sicon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#aaa;font-size:14px}
+.fsel{padding:8px 30px 8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;outline:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center;appearance:none;cursor:pointer;min-width:120px;max-width:160px}
+.fsel:focus{border-color:#1a8a6e}
+.fbtn{width:34px;height:34px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:#666;flex-shrink:0}
+.fbtn:hover{border-color:#1a8a6e;color:#1a8a6e}
+.tbl-section{background:#fff;border-radius:12px;padding:20px 24px;box-shadow:0 1px 4px rgba(0,0,0,.06);display:flex;flex-direction:column;max-height:calc(100vh - 340px);min-height:500px}
+.tbl-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:8px;flex-shrink:0}
+.tbl-title{font-size:16px;font-weight:700;color:#1a1a1a}
+.tbl-sub{font-size:12px;color:#999;margin-top:3px}
+.tbl-meta{display:flex;gap:16px;align-items:center;font-size:12px;color:#888}
+.mdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
+.mdot-o{background:#f0a030}
+.mdot-r{background:#e74c3c}
+.tbl-wrap{flex:1;overflow:auto;border:1px solid #eee;border-radius:8px;min-height:0}
+table{width:100%;border-collapse:collapse;min-width:1850px}
+thead th{background:#f8f9fa;padding:10px 10px;font-size:12px;font-weight:600;color:#555;text-align:left;border-bottom:2px solid #eee;white-space:nowrap;position:sticky;top:0;z-index:2}
+thead th.n{text-align:right}
+thead th.c{text-align:center}
+thead th:nth-child(1){position:sticky;left:0px;width:130px;min-width:130px;max-width:130px;z-index:10;background:#f8f9fa;border-right:1px solid #eee}
+thead th:nth-child(2){position:sticky;left:130px;width:72px;min-width:72px;max-width:72px;z-index:9;background:#f8f9fa;border-right:1px solid #eee}
+thead th:nth-child(3){position:sticky;left:202px;width:220px;min-width:220px;max-width:220px;z-index:8;background:#f8f9fa;border-right:1px solid #eee}
+thead th:nth-child(4){position:sticky;left:422px;width:160px;min-width:160px;max-width:160px;z-index:7;background:#f8f9fa;border-right:1px solid #eee}
+tbody tr{border-bottom:1px solid #f2f2f2;transition:background .1s}
+tbody tr:hover{background:#f0faf6}
+tbody tr.risk{background:#fff8f5}
+tbody tr.risk:hover{background:#fff0eb}
+tbody td{padding:8px 10px;font-size:13px;color:#444;white-space:nowrap;vertical-align:middle}
+tbody td.n{text-align:right;font-variant-numeric:tabular-nums}
+tbody td.c{text-align:center}
+tbody td:nth-child(1){position:sticky;left:0px;width:130px;min-width:130px;max-width:130px;z-index:10;background:#fff;border-right:1px solid #f0f0f0;overflow:hidden;text-overflow:ellipsis}
+tbody tr.risk td:nth-child(1){background:#fff8f5}
+tbody tr:hover td:nth-child(1){background:#f0faf6}
+tbody tr.risk:hover td:nth-child(1){background:#fff0eb}
+tbody td:nth-child(2){position:sticky;left:130px;width:72px;min-width:72px;max-width:72px;z-index:9;background:#fff;border-right:1px solid #f0f0f0;overflow:hidden;text-overflow:ellipsis}
+tbody tr.risk td:nth-child(2){background:#fff8f5}
+tbody tr:hover td:nth-child(2){background:#f0faf6}
+tbody tr.risk:hover td:nth-child(2){background:#fff0eb}
+tbody td:nth-child(3){position:sticky;left:202px;width:220px;min-width:220px;max-width:220px;z-index:8;background:#fff;border-right:1px solid #f0f0f0;overflow:hidden;text-overflow:ellipsis}
+tbody tr.risk td:nth-child(3){background:#fff8f5}
+tbody tr:hover td:nth-child(3){background:#f0faf6}
+tbody tr.risk:hover td:nth-child(3){background:#fff0eb}
+tbody td:nth-child(4){position:sticky;left:422px;width:160px;min-width:160px;max-width:160px;z-index:7;background:#fff;border-right:1px solid #f0f0f0;overflow:hidden;text-overflow:ellipsis}
+tbody tr.risk td:nth-child(4){background:#fff8f5}
+tbody tr:hover td:nth-child(4){background:#f0faf6}
+tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
+.editable{background:#fffef5!important;cursor:text;border:1px solid transparent;border-radius:3px;padding:4px 8px;transition:border-color .2s;min-width:60px}
+.editable:focus{border-color:#1a8a6e;outline:none;background:#fff!important}
+.editable:hover{border-color:#ddd}
+.db{display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:500}
+.d1{background:#e8f8f2;color:#1a8a6e}
+.d2{background:#e8f0fe;color:#3b6dd4}
+.d3{background:#fef3e8;color:#d4853b}
+.pname{font-weight:600;color:#1a1a1a}
+.pstatus{font-size:11px;margin-top:1px}
+.pstatus.ok{color:#1a8a6e}
+.pstatus.no{color:#999}
+.cov{font-weight:600}
+.cov.low{color:#e74c3c}
+.cov.med{color:#e6930a}
+.cov.good{color:#1a8a6e}
+.cov.great{color:#1a8a6e}
+.dif{font-weight:600}
+.dif.neg{color:#e74c3c}
+.dif.pos{color:#1a8a6e}
+.cell-sel{border:none;background:transparent;font-size:13px;cursor:pointer;outline:none;padding:2px 4px;text-align:center}
+.pag{display:flex;justify-content:space-between;align-items:center;padding:12px 4px 4px;flex-shrink:0;background:#fff;border-top:1px solid #f0f0f0;position:sticky;bottom:0;z-index:20}
+.pag-info{font-size:13px;color:#888;display:flex;align-items:center;gap:10px}
+.pag-ctrl{display:flex;gap:4px;align-items:center}
+.pg{width:30px;height:30px;border:1px solid #ddd;border-radius:5px;background:#fff;cursor:pointer;font-size:13px;color:#555;display:flex;align-items:center;justify-content:center}
+.pg:hover{border-color:#1a8a6e;color:#1a8a6e}
+.pg.act{background:#1a8a6e;color:#fff;border-color:#1a8a6e}
+.pg:disabled{opacity:.4;cursor:not-allowed}
+.ps-sel{padding:4px 8px;border:1px solid #ddd;border-radius:5px;font-size:13px;outline:none}
+.bot-stats{display:flex;gap:20px;padding:10px 4px;font-size:12px;color:#999;flex-wrap:wrap;flex-shrink:0}
+.bot-stats span{white-space:nowrap}
+.toast{position:fixed;top:20px;right:20px;background:#333;color:#fff;padding:12px 20px;border-radius:8px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+.loading-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10001}
+.loading-spinner{width:48px;height:48px;border:4px solid #e8f8f2;border-top-color:#1a8a6e;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{margin-top:16px;font-size:14px;color:#666}
+.login-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#0d7a5f 0%,#1db88a 50%,#2dd4a0 100%);display:flex;align-items:center;justify-content:center;z-index:10000}
+.login-card{background:#fff;border-radius:16px;padding:44px 40px 36px;width:390px;max-width:92vw;box-shadow:0 24px 64px rgba(0,0,0,.18);text-align:center}
+.login-logo{width:60px;height:60px;background:linear-gradient(135deg,#1a8a6e,#1db88a);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 18px;box-shadow:0 6px 16px rgba(26,138,110,.3)}
+.login-brand{font-size:18px;font-weight:700;color:#1a1a1a;margin-bottom:4px;letter-spacing:.5px}
+.login-sub{font-size:12px;color:#aaa;margin-bottom:30px}
+.login-field{text-align:left;margin-bottom:16px}
+.login-field label{display:block;font-size:12px;color:#888;margin-bottom:5px;font-weight:500}
+.login-field input{width:100%;padding:11px 14px;border:1.5px solid #e4e4e4;border-radius:9px;font-size:14px;outline:none;transition:border-color .2s,box-shadow .2s}
+.login-field input:focus{border-color:#1a8a6e;box-shadow:0 0 0 3px rgba(26,138,110,.1)}
+.login-field input::placeholder{color:#ccc}
+.login-btn{width:100%;padding:12px;background:linear-gradient(135deg,#1a8a6e,#1db88a);color:#fff;border:none;border-radius:9px;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px;transition:opacity .2s,transform .1s;letter-spacing:1px}
+.login-btn:hover{opacity:.9}
+.login-btn:active{transform:scale(.98)}
+.login-err{color:#e74c3c;font-size:13px;margin-top:14px;min-height:20px}
+.sync-indicator{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 10px;border-radius:12px;background:rgba(255,255,255,.15)}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:#4ade80;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@media(max-width:768px){.header{padding:12px 14px;flex-direction:column;gap:8px}.header-actions{justify-content:center}.stats-row{flex-direction:column}.main{padding:10px}.filter-bar{padding:10px}.tbl-section{padding:12px 8px;max-height:none}}
+</style>
+</head>
+<body>
+
+<!-- 登录页面 -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-card">
+    <div class="login-logo">📋</div>
+    <div class="login-brand">四季度供应覆盖管理系统</div>
+    <div class="login-sub">请输入账号密码登录系统</div>
+    <div class="login-field">
+      <label>账号</label>
+      <input type="text" id="loginUser" placeholder="请输入账号" autocomplete="off">
+    </div>
+    <div class="login-field">
+      <label>密码</label>
+      <input type="password" id="loginPass" placeholder="请输入密码" autocomplete="off">
+    </div>
+    <div class="login-field" style="display:flex;align-items:center;gap:6px;margin-bottom:20px">
+      <input type="checkbox" id="loginRemember" style="width:auto;margin:0">
+      <label for="loginRemember" style="font-size:13px;color:#666;margin:0;cursor:pointer">记住账号密码</label>
+    </div>
+    <button class="login-btn" onclick="doLogin()">登 录</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loadingOverlay" style="display:none">
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="loadingText">正在从云端加载数据...</div>
+</div>
+
+<!-- 主内容 -->
+<div id="appContent" style="display:none">
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-icon">📋</div>
+    <div>
+      <div class="header-title">四季度供应覆盖管理工具</div>
+      <div class="header-sub">2025年9—12月同期销量 · 部门级 SKU 供应覆盖</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <div class="sync-indicator" id="syncIndicator">
+      <span class="sync-dot" id="syncDot"></span>
+      <span id="syncText">已连接</span>
+    </div>
+    <button class="btn-h btn-imp" onclick="document.getElementById('fileInput').click()">↑ 导入在外/在产</button>
+    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="importStock(event)">
+  </div>
+</div>
+
+<div class="main">
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-info">
+        <div class="stat-label"><span class="si si-g">📦</span> 目前完成覆盖率</div>
+        <div class="stat-val" id="covRate">0%</div>
+        <div class="stat-desc" id="covDesc">加载中...</div>
+      </div>
+      <div class="ring" id="ringChart"><span id="ringVal">0</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-info">
+        <div class="stat-label"><span class="si si-r">⚠</span> 风险 SKU 数量</div>
+        <div class="stat-val" id="riskCount">0</div>
+        <div class="stat-desc">覆盖比例低于50% 或 差额大于50,000盒</div>
+      </div>
+      <div class="stat-right"><a onclick="filterRisk()">点击筛选风险项</a></div>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <div class="search-box">
+      <span class="sicon">🔍</span>
+      <input type="text" id="searchInput" placeholder="搜索商品名称 / ERP ID / 规格 / 厂家" oninput="applyFilters()">
+    </div>
+    <select class="fsel" id="fDept" onchange="applyFilters()"><option value="">全部部门</option></select>
+    <select class="fsel" id="fPlanner" onchange="applyFilters()"><option value="">全部计划人员</option></select>
+    <select class="fsel" id="fBuyer" onchange="applyFilters()"><option value="">全部采销人员</option></select>
+    <select class="fsel" id="fMfr" onchange="applyFilters()"><option value="">全部生产厂家</option></select>
+    <select class="fsel" id="fCov" onchange="applyFilters()">
+      <option value="">全部覆盖率</option>
+      <option value="75-85">覆盖率≈80% (±5%)</option>
+      <option value="0-30">0% - 30%</option>
+      <option value="30-50">30% - 50%</option>
+      <option value="50-80">50% - 80%</option>
+      <option value="80-90">80% - 90%</option>
+      <option value="90-100">90% - 100%</option>
+      <option value="100+">100%+</option>
+    </select>
+    <select class="fsel" id="fState" onchange="applyFilters()">
+      <option value="">全部状态</option>
+      <option value="covered">已完成覆盖</option>
+      <option value="risk">风险 SKU</option>
+      <option value="needAdd">需要增补</option>
+      <option value="abnormal">非正常经营</option>
+    </select>
+    <button class="fbtn" onclick="resetFilters()" title="重置筛选">✕</button>
+  </div>
+
+  <div class="tbl-section">
+    <div class="tbl-head">
+      <div>
+        <div class="tbl-title">供应覆盖明细</div>
+        <div class="tbl-sub">黄色列可维护；数据实时同步至云端数据库</div>
+      </div>
+      <div class="tbl-meta">
+        <span><span class="mdot mdot-o"></span>可修改字段</span>
+        <span><span class="mdot mdot-r"></span>风险SKU</span>
+        <span id="totalCount">共 0 条</span>
+      </div>
+    </div>
+    <div class="tbl-wrap" id="tblWrap">
+      <table>
+        <thead><tr>
+          <th style="width:130px;min-width:130px">商品ERP ID</th>
+          <th style="width:72px;min-width:72px">部门</th>
+          <th style="width:220px;min-width:220px">商品名称</th>
+          <th style="width:160px;min-width:160px">商品规格</th>
+          <th>生产厂家</th>
+          <th>采销人员</th>
+          <th>计划人员</th>
+          <th class="n">在库库存</th>
+          <th class="n">在外库存</th>
+          <th class="n">在产计划</th>
+          <th class="n">总库存</th>
+          <th class="n">25年同期销量</th>
+          <th class="n">覆盖比例</th>
+          <th class="n">差额</th>
+          <th class="c">是否增补计划</th>
+          <th class="c">是否正常经营</th>
+          <th>备注</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="pag">
+      <div class="pag-info">
+        <span id="pageText">-</span>
+        <select class="ps-sel" id="psSel" onchange="changePS()">
+          <option value="30">30条/页</option>
+          <option value="50" selected>50条/页</option>
+          <option value="100">100条/页</option>
+          <option value="200">200条/页</option>
+        </select>
+      </div>
+      <div class="pag-ctrl" id="pagCtrl"></div>
+    </div>
+    <div class="bot-stats">
+      <span id="bs1">-</span>
+      <span id="bs2">-</span>
+      <span id="bs3">-</span>
+      <span id="bs4">-</span>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== Supabase 配置 =====
+const SUPABASE_URL = 'https://qewywdclyurpkjfecwfn.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFld3l3ZGNseXVycGtqZmVjd2ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2MDE4NDgsImV4cCI6MjEwMjE3Nzg0OH0.FwjV4LQwyFDUxo3YJWz_1GoKk-JCAYy886RZtzavANc';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ===== 登录验证逻辑 =====
+const VALID_USER='YYYCKZ',VALID_PASS='yyyckz';
+const SK_AUTH='q4_supply_auth';
+const SK_REMEMBER='q4_supply_remember';
+const SK_SEEDED='q4_sb_seeded_v1';
+
+function checkAuth(){
+  // 检查是否有记住的账号密码
+  const saved=localStorage.getItem(SK_REMEMBER);
+  if(saved){
+    try{
+      const {user,pass}=JSON.parse(saved);
+      document.getElementById('loginUser').value=user;
+      document.getElementById('loginPass').value=pass;
+      document.getElementById('loginRemember').checked=true;
+    }catch(e){}
+  }
+  // 检查是否已登录（sessionStorage 保持当前会话）
+  if(sessionStorage.getItem(SK_AUTH)==='1'){
+    document.getElementById('loginOverlay').style.display='none';
+    document.getElementById('appContent').style.display='';
+    loadFromSupabase();
+  }
+}
+function doLogin(){
+  var u=document.getElementById('loginUser').value.trim();
+  var p=document.getElementById('loginPass').value;
+  var remember=document.getElementById('loginRemember').checked;
+  if(u===VALID_USER&&p===VALID_PASS){
+    sessionStorage.setItem(SK_AUTH,'1');
+    // 记住账号密码
+    if(remember){
+      localStorage.setItem(SK_REMEMBER,JSON.stringify({user:u,pass:p}));
+    }else{
+      localStorage.removeItem(SK_REMEMBER);
+    }
+    document.getElementById('loginOverlay').style.display='none';
+    document.getElementById('appContent').style.display='';
+    loadFromSupabase();
+  }else{
+    document.getElementById('loginErr').textContent='账号或密码错误';
+    document.getElementById('loginPass').value='';
+  }
+}
+document.addEventListener('keydown',function(e){
+  if(e.key==='Enter'&&document.getElementById('loginOverlay').style.display!=='none'){
+    doLogin();
+  }
+});
+checkAuth();
+
+// ===== 内嵌基底数据（备用） =====
+const RAW=[];
+
+let allData=[],filtered=[],cp=1,ps=50;
+let supabaseReady=false;
+let saveTimer=null;
+
+// ===== 从 Supabase 加载数据 =====
+async function fetchAllRows(table){
+  let all=[],off=0,batch=1000;
+  while(true){
+    let {data,error}=await sb.from(table).select('*').range(off,off+batch-1);
+    if(error||!data||data.length===0)break;
+    all=all.concat(data);
+    if(data.length<batch)break;
+    off+=batch;
+    if(off>=8000)break;
+  }
+  return all;
+}
+async function loadFromSupabase(){
+  showLoading('正在从云端加载数据...');
+  try{
+    let baseData=await fetchAllRows('sku_base');
+    
+    if(!baseData||baseData.length===0){
+      console.log('Supabase sku_base 为空或不存在，使用内嵌数据');
+      useFallbackData();
+      if(allData.length===0){hideLoading();alert('无法连接云端数据库，请稍后刷新重试');return;}
+      seedSupabase();
+    }else{
+      supabaseReady=true;
+      let editsData=await fetchAllRows('sku_edits');
+      const editsMap={};
+      if(editsData&&editsData.length>0){
+        editsData.forEach(e=>{
+          const key=e.erp_id+'||'+e.dept;
+          editsMap[key]=e;
+        });
+      }
+      // 合并数据
+      allData=baseData.map(r=>{
+        const key=r.erp_id+'||'+r.dept;
+        const ed=editsMap[key];
+        return {
+          erpId:r.erp_id,
+          dept:r.dept,
+          name:r.name||'',
+          spec:r.spec||'',
+          manufacturer:r.manufacturer||'',
+          buyer:r.buyer||'',
+          planner:r.planner||'',
+          status:r.status||'',
+          q4Sales:Number(r.q4_sales)||0,
+          stock:Number(r.stock)||0,
+          outStock:ed?Number(ed.out_stock)||0:0,
+          production:ed?Number(ed.production)||0:0,
+          keyPlan:ed?(ed.key_plan||'否'):(r.key_plan||'否'),
+          isNormal:ed?(ed.is_normal||'是'):(r.is_normal||'是'),
+          remark:ed?(ed.remark||''):(r.remark||'')
+        };
+      });
+      hideLoading();
+      populateFilters();
+      applyFilters();
+      updateSyncStatus('online');
+    }
+  }catch(e){
+    console.error('Supabase load error:',e);
+    useFallbackData();
+  }
+}
+
+function useFallbackData(){
+  // 使用内嵌数据，并尝试合并 localStorage 编辑
+  const SK='q4_supply_data_v5';
+  const saved=localStorage.getItem(SK);
+  if(saved){
+    try{
+      const ed=JSON.parse(saved);
+      allData=RAW.map(r=>{
+        const e=ed.find(x=>x.erpId===r.erpId&&x.dept===r.dept);
+        return e?{...r,stock:e.stock||0,outStock:e.outStock||0,production:e.production||0,keyPlan:e.keyPlan||'否',isNormal:e.isNormal||'是',remark:e.remark||''}:r;
+      });
+    }catch(e){allData=[...RAW]}
+  }else{allData=[...RAW]}
+  hideLoading();
+  populateFilters();
+  applyFilters();
+  updateSyncStatus('offline');
+}
+
+// ===== 播种数据到 Supabase =====
+async function seedSupabase(){
+  if(localStorage.getItem(SK_SEEDED)==='1')return;
+  showLoading('正在初始化云端数据，请稍候...');
+  try{
+    // 分批上传，每批 300 条
+    const batchSize=300;
+    for(let i=0;i<RAW.length;i+=batchSize){
+      const batch=RAW.slice(i,i+batchSize).map(r=>({
+        erp_id:r.erpId,
+        dept:r.dept,
+        name:r.name,
+        status:r.status,
+        spec:r.spec,
+        manufacturer:r.manufacturer,
+        buyer:r.buyer,
+        planner:r.planner,
+        q4_sales:r.q4Sales,
+        stock:r.stock,
+        key_plan:r.keyPlan||'',
+        is_normal:r.isNormal||'是'
+      }));
+      const {error}=await sb.from('sku_base').upsert(batch,{onConflict:'erp_id,dept',ignoreDuplicates:true});
+      if(error){
+        console.error('Seed batch error:',error);
+        updateSyncStatus('offline');
+        hideLoading();
+        return;
+      }
+      const pct=Math.min(100,Math.round((i+batchSize)/RAW.length*100));
+      document.getElementById('loadingText').textContent='正在上传数据至云端... '+pct+'%';
+    }
+    // 如果有本地编辑，也上传到 sku_edits
+    const SK='q4_supply_data_v5';
+    const saved=localStorage.getItem(SK);
+    if(saved){
+      try{
+        const ed=JSON.parse(saved);
+        const editsBatch=ed.filter(e=>e.outStock||e.production||e.remark).map(e=>({
+          erp_id:e.erpId,
+          dept:e.dept,
+          out_stock:e.outStock||0,
+          production:e.production||0,
+          stock:e.stock||0,
+          key_plan:e.keyPlan||'否',
+          is_normal:e.isNormal||'是',
+          remark:e.remark||'',
+          updated_at:new Date().toISOString()
+        }));
+        if(editsBatch.length>0){
+          await sb.from('sku_edits').upsert(editsBatch,{onConflict:'erp_id,dept'});
+        }
+      }catch(e){console.error('Edits seed error:',e)}
+    }
+    localStorage.setItem(SK_SEEDED,'1');
+    supabaseReady=true;
+    updateSyncStatus('online');
+    toast('云端数据初始化完成！刷新页面即可从云端加载');
+  }catch(e){
+    console.error('Seed error:',e);
+    updateSyncStatus('offline');
+  }
+  hideLoading();
+}
+
+// ===== 保存到 Supabase（防抖） =====
+function saveToSupabase(row){
+  if(!supabaseReady)return;
+  // 保存到 sku_edits
+  const editData={
+    erp_id:row.erpId,
+    dept:row.dept,
+    out_stock:row.outStock||0,
+    production:row.production||0,
+    stock:row.stock||0,
+    key_plan:row.keyPlan||'否',
+    is_normal:row.isNormal||'是',
+    remark:row.remark||'',
+    updated_at:new Date().toISOString()
+  };
+  // 防抖：同一行 500ms 内的多次编辑只发一次请求
+  const key=row.erpId+'||'+row.dept;
+  if(!window._saveTimers)window._saveTimers={};
+  if(window._saveTimers[key])clearTimeout(window._saveTimers[key]);
+  window._saveTimers[key]=setTimeout(async()=>{
+    try{
+      const {error}=await sb.from('sku_edits').upsert(editData,{onConflict:'erp_id,dept'});
+      if(error)console.error('Save error:',error);
+    }catch(e){console.error('Save exception:',e)}
+    delete window._saveTimers[key];
+  },500);
+  // 同时保存到 localStorage 作为备份
+  saveToLocal();
+}
+
+function saveToLocal(){
+  try{
+    localStorage.setItem('q4_supply_data_v5',JSON.stringify(allData.map(r=>({
+      erpId:r.erpId,dept:r.dept,stock:r.stock,outStock:r.outStock,
+      production:r.production,keyPlan:r.keyPlan,isNormal:r.isNormal,remark:r.remark
+    }))));
+  }catch(e){}
+}
+
+function showLoading(t){
+  document.getElementById('loadingText').textContent=t||'加载中...';
+  document.getElementById('loadingOverlay').style.display='';
+}
+function hideLoading(){document.getElementById('loadingOverlay').style.display='none'}
+
+function updateSyncStatus(status){
+  const dot=document.getElementById('syncDot');
+  const txt=document.getElementById('syncText');
+  if(status==='online'){
+    dot.style.background='#4ade80';
+    txt.textContent='已连接';
+  }else{
+    dot.style.background='#f0a030';
+    txt.textContent='离线模式';
+  }
+}
+
+// ===== 计算函数 =====
+function calcTotal(r){return(r.stock||0)+(r.outStock||0)+(r.production||0)}
+function calcCov(r){const t=calcTotal(r);return r.q4Sales>0?(t/r.q4Sales*100):0}
+function calcDiff(r){return calcTotal(r)-r.q4Sales}
+function isRisk(r){const c=calcCov(r),d=Math.abs(calcDiff(r));return c<50||d>50000}
+function isActive(r){return r.isNormal==='是'}
+
+function covClass(c){if(c<50)return'low';if(c<80)return'med';if(c<100)return'good';return'great'}
+
+function updateStats(){
+  const active=allData.filter(isActive);
+  const total=active.length;
+  const covered=allData.filter(r=>isActive(r)&&calcCov(r)>=90).length;
+  const rate=total>0?(covered/total*100):0;
+  const risks=allData.filter(r=>isActive(r)&&isRisk(r)).length;
+  document.getElementById('covRate').textContent=rate.toFixed(1)+'%';
+  document.getElementById('covDesc').textContent=covered+' 个SKU达到90%，有效经营 '+total+' 个';
+  document.getElementById('riskCount').textContent=risks.toLocaleString();
+  const deg=Math.round(rate/100*360);
+  document.getElementById('ringChart').style.background='conic-gradient(#1a8a6e 0deg '+deg+'deg, #e8f8f2 '+deg+'deg 360deg)';
+  document.getElementById('ringVal').textContent=Math.round(rate);
+}
+
+function populateFilters(){
+  const depts=[...new Set(allData.map(r=>r.dept))].sort();
+  const planners=[...new Set(allData.map(r=>r.planner))].sort().filter(Boolean);
+  const buyers=[...new Set(allData.map(r=>r.buyer))].sort().filter(Boolean);
+  const mfrs=[...new Set(allData.map(r=>r.manufacturer))].sort().filter(Boolean);
+  fillSel('fDept',depts);
+  fillSel('fPlanner',planners);
+  fillSel('fBuyer',buyers);
+  fillSel('fMfr',mfrs);
+}
+function fillSel(id,opts){
+  const s=document.getElementById(id),v=s.value;
+  const ft=s.options[0].text;
+  s.innerHTML='<option value="">'+ft+'</option>'+opts.map(o=>'<option value="'+o+'"'+(o===v?' selected':'')+'>'+o+'</option>').join('');
+}
+
+function applyFilters(){
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  const dept=document.getElementById('fDept').value;
+  const planner=document.getElementById('fPlanner').value;
+  const buyer=document.getElementById('fBuyer').value;
+  const mfr=document.getElementById('fMfr').value;
+  const cov=document.getElementById('fCov').value;
+  const state=document.getElementById('fState').value;
+  filtered=allData.filter(r=>{
+    if(q&&!r.name.toLowerCase().includes(q)&&!r.erpId.toLowerCase().includes(q)&&!(r.spec||'').toLowerCase().includes(q)&&!(r.manufacturer||'').toLowerCase().includes(q))return false;
+    if(dept&&r.dept!==dept)return false;
+    if(planner&&r.planner!==planner)return false;
+    if(buyer&&r.buyer!==buyer)return false;
+    if(mfr&&r.manufacturer!==mfr)return false;
+    if(state){
+      if(state==='covered'&&calcCov(r)<90)return false;
+      if(state==='risk'&&!isRisk(r))return false;
+      if(state==='needAdd'&&r.keyPlan!=='是')return false;
+      if(state==='abnormal'&&r.isNormal!=='否')return false;
+    }
+    if(cov){
+      const c=calcCov(r);
+      if(cov==='75-85'&&(c<75||c>85))return false;
+      if(cov==='0-30'&&c>=30)return false;
+      if(cov==='30-50'&&(c<30||c>=50))return false;
+      if(cov==='50-80'&&(c<50||c>=80))return false;
+      if(cov==='80-90'&&(c<80||c>=90))return false;
+      if(cov==='90-100'&&(c<90||c>=100))return false;
+      if(cov==='100+'&&c<100)return false;
+    }
+    return true;
+  });
+  cp=1;
+  updateStats();
+  render();
+}
+function resetFilters(){
+  ['searchInput','fDept','fPlanner','fBuyer','fMfr','fCov','fState'].forEach(id=>{document.getElementById(id).value=''});
+  filtered=[...allData];cp=1;updateStats();render();
+}
+function filterRisk(){
+  resetFilters();
+  filtered=allData.filter(r=>isActive(r)&&isRisk(r));
+  cp=1;render();
+}
+
+function render(){
+  const tb=document.getElementById('tbody');
+  const s=(cp-1)*ps,e=Math.min(s+ps,filtered.length);
+  const pg=filtered.slice(s,e);
+  tb.innerHTML=pg.map((r,i)=>{
+    const idx=s+i;
+    const t=calcTotal(r),c=calcCov(r),d=calcDiff(r);
+    const risk=isRisk(r)&&isActive(r);
+    const cc=covClass(c);
+    const dc=d<0?'neg':(d>0?'pos':'');
+    const dpc=r.dept==='一部'?'d1':(r.dept==='二部'?'d2':'d3');
+    const stCls=r.status==='正常'?'ok':'no';
+    return '<tr class="'+(risk?'risk':'')+'">'
+      +'<td style="font-size:12px;color:#888">'+r.erpId+'</td>'
+      +'<td><span class="db '+dpc+'">'+r.dept+'</span></td>'
+      +'<td><div class="pname">'+escHtml(r.name)+'</div><div class="pstatus '+stCls+'">'+r.status+'</div></td>'
+      +'<td style="font-size:12px;color:#666">'+escHtml(r.spec||'')+'</td>'
+      +'<td style="font-size:12px;color:#666;max-width:180px;overflow:hidden;text-overflow:ellipsis" title="'+escHtml(r.manufacturer||'')+'">'+escHtml(r.manufacturer||'')+'</td>'
+      +'<td>'+escHtml(r.buyer||'')+'</td>'
+      +'<td>'+escHtml(r.planner||'')+'</td>'
+      +'<td class="n editable" contenteditable="true" data-i="'+idx+'" data-f="stock">'+(r.stock||0).toLocaleString()+'</td>'
+      +'<td class="n editable" contenteditable="true" data-i="'+idx+'" data-f="outStock">'+(r.outStock||0).toLocaleString()+'</td>'
+      +'<td class="n editable" contenteditable="true" data-i="'+idx+'" data-f="production">'+(r.production||0).toLocaleString()+'</td>'
+      +'<td class="n" style="font-weight:600">'+t.toLocaleString()+'</td>'
+      +'<td class="n">'+r.q4Sales.toLocaleString()+'</td>'
+      +'<td class="n"><span class="cov '+cc+'">'+c.toFixed(1)+'%</span></td>'
+      +'<td class="n"><span class="dif '+dc+'">'+(d>0?'+':'')+d.toLocaleString()+'</span></td>'
+      +'<td class="c"><select class="cell-sel" data-i="'+idx+'" data-f="keyPlan" onchange="updSel(this)"><option'+(r.keyPlan==='否'?' selected':'')+'>否</option><option'+(r.keyPlan==='是'?' selected':'')+'>是</option></select></td>'
+      +'<td class="c"><select class="cell-sel" data-i="'+idx+'" data-f="isNormal" onchange="updSel(this)"><option'+(r.isNormal==='是'?' selected':'')+'>是</option><option'+(r.isNormal==='否'?' selected':'')+'>否</option></select></td>'
+      +'<td class="editable" contenteditable="true" data-i="'+idx+'" data-f="remark" style="min-width:100px">'+escHtml(r.remark||'')+'</td>'
+      +'</tr>';
+  }).join('');
+  document.getElementById('pageText').textContent=filtered.length>0?'第 '+(s+1)+'-'+e+' 条，共 '+filtered.length.toLocaleString()+' 条':'无匹配数据';
+  document.getElementById('totalCount').textContent='共 '+filtered.length.toLocaleString()+' 条';
+  renderPag();
+  updateBot();
+}
+
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+function renderPag(){
+  const tp=Math.ceil(filtered.length/ps),ctrl=document.getElementById('pagCtrl');
+  if(tp<=1){ctrl.innerHTML='';return}
+  let h='<button class="pg" onclick="go('+((cp>1)?cp-1:1)+')" '+(cp===1?'disabled':'')+'>\u2039</button>';
+  const mx=7;let sp=Math.max(1,cp-3),ep=Math.min(tp,sp+mx-1);
+  if(ep-sp<mx-1)sp=Math.max(1,ep-mx+1);
+  if(sp>1){h+='<button class="pg" onclick="go(1)">1</button>';if(sp>2)h+='<span style="color:#ccc;padding:0 2px">\u2026</span>'}
+  for(let p=sp;p<=ep;p++)h+='<button class="pg'+(p===cp?' act':'')+'" onclick="go('+p+')">'+p+'</button>';
+  if(ep<tp){if(ep<tp-1)h+='<span style="color:#ccc;padding:0 2px">\u2026</span>';h+='<button class="pg" onclick="go('+tp+')">'+tp+'</button>'}
+  h+='<button class="pg" onclick="go('+((cp<tp)?cp+1:tp)+')" '+(cp===tp?'disabled':'')+'>\u203A</button>';
+  ctrl.innerHTML=h;
+}
+function go(p){const tp=Math.ceil(filtered.length/ps);if(p<1||p>tp)return;cp=p;render()}
+function changePS(){ps=parseInt(document.getElementById('psSel').value);cp=1;render()}
+
+function updCell(el){
+  const idx=parseInt(el.dataset.i),f=el.dataset.f;
+  let v=el.textContent.replace(/,/g,'').trim();
+  v=f==='remark'?v:(parseInt(v)||0);
+  if(filtered[idx]){filtered[idx][f]=v;
+    const o=allData.find(r=>r.erpId===filtered[idx].erpId&&r.dept===filtered[idx].dept);
+    if(o){o[f]=v;saveToSupabase(o);}
+  }
+  updateStats();render();
+}
+function updSel(el){
+  const idx=parseInt(el.dataset.i),f=el.dataset.f;
+  if(filtered[idx]){filtered[idx][f]=el.value;
+    const o=allData.find(r=>r.erpId===filtered[idx].erpId&&r.dept===filtered[idx].dept);
+    if(o){o[f]=el.value;saveToSupabase(o);}
+    updateStats();render();
+  }
+}
+document.getElementById('tbody').addEventListener('blur',function(e){if(e.target.classList.contains('editable'))updCell(e.target)},true);
+
+function updateBot(){
+  const dept=document.getElementById('fDept').value;
+  document.getElementById('bs1').textContent='部门：'+(dept||'全部');
+  const risks=filtered.filter(r=>isActive(r)&&isRisk(r)).length;
+  document.getElementById('bs2').textContent='风险SKU：'+risks.toLocaleString();
+  if(filtered.length>0){
+    const ac=filtered.reduce((s,r)=>s+calcCov(r),0)/filtered.length;
+    document.getElementById('bs3').textContent='平均覆盖率：'+ac.toFixed(1)+'%';
+  }else{document.getElementById('bs3').textContent='平均覆盖率：-'}
+  const ts=filtered.reduce((s,r)=>s+r.q4Sales,0);
+  document.getElementById('bs4').textContent='同期销量合计：'+ts.toLocaleString();
+}
+
+function importStock(ev){
+  const f=ev.target.files[0];if(!f)return;
+  const isExcel=/\.(xlsx|xls)$/i.test(f.name);
+  
+  if(isExcel){
+    // Excel 文件处理
+    const rd=new FileReader();
+    rd.onload=function(e){
+      try{
+        const data=new Uint8Array(e.target.result);
+        const wb=XLSX.read(data,{type:'array'});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        processImportData(rows);
+      }catch(err){
+        console.error('Excel解析错误:',err);
+        toast('Excel文件解析失败，请检查格式');
+      }
+    };
+    rd.readAsArrayBuffer(f);
+  }else{
+    // CSV 文件处理
+    const rd=new FileReader();
+    rd.onload=function(e){
+      const lines=e.target.result.split('\n').filter(l=>l.trim());
+      const rows=lines.map(l=>l.split(',').map(c=>c.replace(/^"/,'').replace(/"$/,'').trim()));
+      processImportData(rows);
+    };
+    rd.readAsText(f,'UTF-8');
+  }
+  ev.target.value='';
+}
+
+function processImportData(rows){
+  if(rows.length<2){toast('文件格式不正确');return}
+  let cnt=0,skipped=0;
+  const hCols=rows[0].map(c=>String(c).trim().toLowerCase());
+  const findCol=(...names)=>{for(const n of names){const i=hCols.findIndex(h=>h.includes(n));if(i>=0)return i;}return -1;};
+  const iErp=findCol('erp','erpid','商品erp');
+  const iDept=findCol('部门','dept');
+  const iOut=findCol('在外库存','outstock','在外');
+  const iProd=findCol('在产计划','production','在产');
+  if(iErp<0){toast('未找到ERP ID列，请检查文件格式');return;}
+  if(iOut<0&&iProd<0){toast('未找到"在外库存"或"在产计划"列，请检查文件格式');return;}
+  const toSave=[];
+  for(let i=1;i<rows.length;i++){
+    const cols=rows[i].map(c=>String(c).trim());
+    if(cols.length<3)continue;
+    const erp=cols[iErp]?cols[iErp].trim():'';
+    const dept=cols[iDept]?cols[iDept].trim():'';
+    if(!erp)continue;
+    let r=allData.find(x=>x.erpId===erp&&dept&&x.dept===dept);
+    if(!r&&erp)r=allData.find(x=>x.erpId===erp);
+    if(r){
+      if(iOut>=0)r.outStock=parseInt(cols[iOut])||0;
+      if(iProd>=0)r.production=parseInt(cols[iProd])||0;
+      toSave.push(r);
+      cnt++;
+    }else{skipped++;}
+  }
+  toSave.forEach(r=>saveToSupabase(r));
+  applyFilters();
+  let msg='已导入 '+cnt+' 条数据';
+  if(skipped>0)msg+='，'+skipped+' 条未匹配';
+  toast(msg);
+}
+
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
+</script>
+</div>
+</body>
+</html>
