@@ -516,32 +516,47 @@ async function seedSupabase(){
 }
 
 // ===== 保存到 Supabase（防抖） =====
+let _editsColumns=null;
+async function getEditsColumns(){
+  if(_editsColumns)return _editsColumns;
+  try{
+    const {data,error}=await sb.from('sku_edits').select('*').limit(1);
+    if(data&&data.length>0){_editsColumns=Object.keys(data[0]);return _editsColumns;}
+    if(error&&error.hint){
+      const m=error.hint.match(/column[s]? (\S+)/);
+      if(m){
+        const missing=m[1].replace(/'/g,'');
+        _editsColumns=['erp_id','dept','out_stock','production','remark','updated_at'];
+        return _editsColumns;
+      }
+    }
+  }catch(e){}
+  _editsColumns=['erp_id','dept','out_stock','production','remark','updated_at'];
+  return _editsColumns;
+}
 function saveToSupabase(row){
   if(!supabaseReady)return;
-  // 保存到 sku_edits
-  const editData={
-    erp_id:row.erpId,
-    dept:row.dept,
-    out_stock:row.outStock||0,
-    production:row.production||0,
-    stock:row.stock||0,
-    key_plan:row.keyPlan||'否',
-    is_normal:row.isNormal||'是',
-    remark:row.remark||'',
-    updated_at:new Date().toISOString()
-  };
-  // 防抖：同一行 500ms 内的多次编辑只发一次请求
   const key=row.erpId+'||'+row.dept;
   if(!window._saveTimers)window._saveTimers={};
   if(window._saveTimers[key])clearTimeout(window._saveTimers[key]);
   window._saveTimers[key]=setTimeout(async()=>{
     try{
+      const cols=await getEditsColumns();
+      const fullData={
+        erp_id:row.erpId,dept:row.dept,
+        out_stock:row.outStock||0,production:row.production||0,
+        stock:row.stock||0,key_plan:row.keyPlan||'否',
+        is_normal:row.isNormal||'是',remark:row.remark||'',
+        updated_at:new Date().toISOString()
+      };
+      const editData={};
+      cols.forEach(c=>{if(fullData[c]!==undefined)editData[c]=fullData[c];});
+      if(!editData.updated_at)editData.updated_at=new Date().toISOString();
       const {error}=await sb.from('sku_edits').upsert(editData,{onConflict:'erp_id,dept'});
       if(error)console.error('Save error:',error);
     }catch(e){console.error('Save exception:',e)}
     delete window._saveTimers[key];
   },500);
-  // 同时保存到 localStorage 作为备份
   saveToLocal();
 }
 
