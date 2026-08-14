@@ -222,17 +222,8 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
     <select class="fsel" id="fDept" onchange="applyFilters()"><option value="">全部部门</option></select>
     <select class="fsel" id="fPlanner" onchange="applyFilters()"><option value="">全部计划人员</option></select>
     <select class="fsel" id="fBuyer" onchange="applyFilters()"><option value="">全部采销人员</option></select>
-    <select class="fsel" id="fMfr" onchange="applyFilters()"><option value="">全部生产厂家</option></select>
-    <select class="fsel" id="fCov" onchange="applyFilters()">
-      <option value="">全部覆盖率</option>
-      <option value="75-85">覆盖率≈80% (±5%)</option>
-      <option value="0-30">0% - 30%</option>
-      <option value="30-50">30% - 50%</option>
-      <option value="50-80">50% - 80%</option>
-      <option value="80-90">80% - 90%</option>
-      <option value="90-100">90% - 100%</option>
-      <option value="100+">100%+</option>
-    </select>
+    <input class="fsel" type="text" id="fMfr" placeholder="搜索生产厂家..." oninput="applyFilters()" style="font-family:inherit">
+    <input class="fsel" type="number" id="fCovMax" placeholder="覆盖率≤?%" oninput="applyFilters()" style="font-family:inherit;width:110px" min="0" max="999">
     <select class="fsel" id="fState" onchange="applyFilters()">
       <option value="">全部状态</option>
       <option value="covered">已完成覆盖</option>
@@ -243,6 +234,10 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
     <button class="fbtn" onclick="resetFilters()" title="重置筛选">✕</button>
   </div>
 
+  <div id="covFilterInfo" style="display:none;background:linear-gradient(135deg,#e0f2fe,#f0f9ff);border-left:4px solid #0284c7;border-radius:8px;padding:12px 18px;margin-bottom:16px;font-size:14px;color:#0c4a6e">
+    <span id="covFilterText"></span>
+  </div>
+
   <div class="tbl-section">
     <div class="tbl-head">
       <div>
@@ -250,6 +245,7 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
         <div class="tbl-sub">黄色列可维护；数据实时同步至云端数据库</div>
       </div>
       <div class="tbl-meta">
+        <span style="color:#dc2626;font-weight:600">⚠️ 备货请注意25年同期销量未估算断货损失销量！</span>
         <span><span class="mdot mdot-o"></span>可修改字段</span>
         <span><span class="mdot mdot-r"></span>风险SKU</span>
         <span id="totalCount">共 0 条</span>
@@ -614,11 +610,9 @@ function populateFilters(){
   const depts=[...new Set(allData.map(r=>r.dept))].sort();
   const planners=[...new Set(allData.map(r=>r.planner))].sort().filter(Boolean);
   const buyers=[...new Set(allData.map(r=>r.buyer))].sort().filter(Boolean);
-  const mfrs=[...new Set(allData.map(r=>r.manufacturer))].sort().filter(Boolean);
   fillSel('fDept',depts);
   fillSel('fPlanner',planners);
   fillSel('fBuyer',buyers);
-  fillSel('fMfr',mfrs);
 }
 function fillSel(id,opts){
   const s=document.getElementById(id),v=s.value;
@@ -631,39 +625,44 @@ function applyFilters(){
   const dept=document.getElementById('fDept').value;
   const planner=document.getElementById('fPlanner').value;
   const buyer=document.getElementById('fBuyer').value;
-  const mfr=document.getElementById('fMfr').value;
-  const cov=document.getElementById('fCov').value;
+  const mfr=document.getElementById('fMfr').value.toLowerCase().trim();
+  const covMax=document.getElementById('fCovMax').value;
   const state=document.getElementById('fState').value;
   filtered=allData.filter(r=>{
     if(q&&!r.name.toLowerCase().includes(q)&&!r.erpId.toLowerCase().includes(q)&&!(r.spec||'').toLowerCase().includes(q)&&!(r.manufacturer||'').toLowerCase().includes(q))return false;
     if(dept&&r.dept!==dept)return false;
     if(planner&&r.planner!==planner)return false;
     if(buyer&&r.buyer!==buyer)return false;
-    if(mfr&&r.manufacturer!==mfr)return false;
+    if(mfr&&!(r.manufacturer||'').toLowerCase().includes(mfr))return false;
     if(state){
       if(state==='covered'&&calcCov(r)<90)return false;
       if(state==='risk'&&!isRisk(r))return false;
       if(state==='needAdd'&&r.keyPlan!=='是')return false;
       if(state==='abnormal'&&r.isNormal!=='否')return false;
     }
-    if(cov){
+    if(covMax!==''&&covMax!==null){
       const c=calcCov(r);
-      if(cov==='75-85'&&(c<75||c>85))return false;
-      if(cov==='0-30'&&c>=30)return false;
-      if(cov==='30-50'&&(c<30||c>=50))return false;
-      if(cov==='50-80'&&(c<50||c>=80))return false;
-      if(cov==='80-90'&&(c<80||c>=90))return false;
-      if(cov==='90-100'&&(c<90||c>=100))return false;
-      if(cov==='100+'&&c<100)return false;
+      if(c>parseFloat(covMax))return false;
     }
     return true;
   });
+  // 更新覆盖率筛选提示
+  const covInfo=document.getElementById('covFilterInfo');
+  const covText=document.getElementById('covFilterText');
+  if(covMax!==''&&covMax!==null&&parseFloat(covMax)>=0){
+    const covCount=filtered.length;
+    const covPct=(covCount/allData.length*100).toFixed(1);
+    covText.innerHTML='覆盖率 ≤ <b>'+parseFloat(covMax)+'%</b> 的商品共 <b>'+covCount+'</b> 个SKU，占全部SKU的 <b>'+covPct+'%</b>（共 '+allData.length+' 个）';
+    covInfo.style.display='block';
+  }else{
+    covInfo.style.display='none';
+  }
   cp=1;
   updateStats();
   render();
 }
 function resetFilters(){
-  ['searchInput','fDept','fPlanner','fBuyer','fMfr','fCov','fState'].forEach(id=>{document.getElementById(id).value=''});
+  ['searchInput','fDept','fPlanner','fBuyer','fMfr','fCovMax','fState'].forEach(id=>{document.getElementById(id).value=''});
   filtered=[...allData];cp=1;updateStats();render();
 }
 function filterRisk(){
