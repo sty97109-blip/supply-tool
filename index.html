@@ -23,6 +23,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hira
 .btn-imp:hover{background:#f0f0f0}
 .btn-dl{background:#fff;color:#1a8a6e;border:none;font-weight:600;opacity:.85}
 .btn-dl:hover{background:#f0f0f0;opacity:1}
+.user-badge{display:flex;align-items:center;gap:6px;padding:4px 12px;border-radius:16px;background:rgba(255,255,255,.2);font-size:12px;color:#fff}
+.user-badge .uname{font-weight:600}
+.btn-logout{padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.1);color:#fff}
+.btn-logout:hover{background:rgba(255,107,107,.3);border-color:#ff6b6b}
 .main{padding:20px 24px;max-width:1800px;margin:0 auto}
 .stats-row{display:flex;gap:20px;margin-bottom:20px}
 .stat-card{flex:1;background:#fff;border-radius:12px;padding:22px 26px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 4px rgba(0,0,0,.06)}
@@ -186,6 +190,10 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
     </div>
   </div>
   <div class="header-actions">
+    <div class="user-badge" id="userBadge">
+      <span class="uname" id="userName">-</span>
+      <button class="btn-logout" onclick="doLogout()">退出</button>
+    </div>
     <div class="sync-indicator" id="syncIndicator">
       <span class="sync-dot" id="syncDot"></span>
       <span id="syncText">已连接</span>
@@ -306,8 +314,14 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== 登录验证逻辑 =====
-const VALID_USER='YYYCKZ',VALID_PASS='yyyckz';
+const USERS = {
+  'YYYCKZ': { pass: 'yyyckz', role: 'admin', name: '管理员' },
+  'YYYLL': { pass: 'yyyll', role: 'viewer', name: '只读用户' }
+};
+let currentUser = null;
+let userRole = 'viewer'; // default to read-only
 const SK_AUTH='q4_supply_auth';
+const SK_USER='q4_supply_user';
 const SK_REMEMBER='q4_supply_remember';
 const SK_SEEDED='q4_sb_seeded_v1';
 
@@ -324,17 +338,27 @@ function checkAuth(){
   }
   // 检查是否已登录（sessionStorage 保持当前会话）
   if(sessionStorage.getItem(SK_AUTH)==='1'){
+    var savedUser = sessionStorage.getItem(SK_USER);
+    if(savedUser && USERS[savedUser]){
+      currentUser = savedUser;
+      userRole = USERS[savedUser].role;
+    }
     document.getElementById('loginOverlay').style.display='none';
     document.getElementById('appContent').style.display='';
+    applyUserRole();
     loadFromSupabase();
   }
 }
 function doLogin(){
-  var u=document.getElementById('loginUser').value.trim();
+  var u=document.getElementById('loginUser').value.trim().toUpperCase();
   var p=document.getElementById('loginPass').value;
   var remember=document.getElementById('loginRemember').checked;
-  if(u===VALID_USER&&p===VALID_PASS){
+  var user = USERS[u];
+  if(user && user.pass===p){
+    currentUser = u;
+    userRole = user.role;
     sessionStorage.setItem(SK_AUTH,'1');
+    sessionStorage.setItem(SK_USER, u);
     // 记住账号密码
     if(remember){
       localStorage.setItem(SK_REMEMBER,JSON.stringify({user:u,pass:p}));
@@ -343,11 +367,36 @@ function doLogin(){
     }
     document.getElementById('loginOverlay').style.display='none';
     document.getElementById('appContent').style.display='';
+    applyUserRole();
     loadFromSupabase();
   }else{
     document.getElementById('loginErr').textContent='账号或密码错误';
     document.getElementById('loginPass').value='';
   }
+}
+function applyUserRole(){
+  // 更新用户显示
+  var userDisplay = document.getElementById('userName');
+  if(userDisplay && currentUser){
+    userDisplay.textContent = currentUser + (userRole==='viewer' ? ' (只读)' : '');
+  }
+  if(userRole==='viewer'){
+    // 隐藏导入按钮
+    var impBtn = document.querySelector('.btn-imp');
+    var dlBtn = document.querySelector('.btn-dl');
+    if(impBtn) impBtn.style.display='none';
+    if(dlBtn) dlBtn.style.display='none';
+    // 更新header sub显示角色
+    var sub = document.querySelector('.header-sub');
+    if(sub) sub.textContent = '只读模式 · 仅可浏览数据，无法编辑';
+  }
+}
+function doLogout(){
+  sessionStorage.removeItem(SK_AUTH);
+  sessionStorage.removeItem(SK_USER);
+  currentUser = null;
+  userRole = 'viewer';
+  location.reload();
 }
 document.addEventListener('keydown',function(e){
   if(e.key==='Enter'&&document.getElementById('loginOverlay').style.display!=='none'){
@@ -688,6 +737,10 @@ function render(){
     const dc=d<0?'neg':(d>0?'pos':'');
     const dpc=r.dept==='一部'?'d1':(r.dept==='二部'?'d2':'d3');
     const stCls=r.status==='正常'?'ok':'no';
+    const isReadonly = userRole==='viewer';
+    const editAttr = isReadonly ? '' : ' contenteditable="true"';
+    const editClass = isReadonly ? '' : ' editable';
+    const selDisabled = isReadonly ? ' disabled' : '';
     return '<tr class="'+(risk?'risk':'')+'">'
       +'<td style="font-size:12px;color:#888">'+r.erpId+'</td>'
       +'<td><span class="db '+dpc+'">'+r.dept+'</span></td>'
@@ -696,16 +749,16 @@ function render(){
       +'<td style="font-size:12px;color:#666;max-width:180px;overflow:hidden;text-overflow:ellipsis" title="'+escHtml(r.manufacturer||'')+'">'+escHtml(r.manufacturer||'')+'</td>'
       +'<td>'+escHtml(r.buyer||'')+'</td>'
       +'<td>'+escHtml(r.planner||'')+'</td>'
-      +'<td class="n editable" contenteditable="true" data-i="'+idx+'" data-f="stock">'+(r.stock||0).toLocaleString()+'</td>'
-      +'<td class="n editable" contenteditable="true" data-i="'+idx+'" data-f="outStock">'+(r.outStock||0).toLocaleString()+'</td>'
-      +'<td class="n editable" contenteditable="true" data-i="'+idx+'" data-f="production">'+(r.production||0).toLocaleString()+'</td>'
+      +'<td class="n'+editClass+'"'+editAttr+' data-i="'+idx+'" data-f="stock">'+(r.stock||0).toLocaleString()+'</td>'
+      +'<td class="n'+editClass+'"'+editAttr+' data-i="'+idx+'" data-f="outStock">'+(r.outStock||0).toLocaleString()+'</td>'
+      +'<td class="n'+editClass+'"'+editAttr+' data-i="'+idx+'" data-f="production">'+(r.production||0).toLocaleString()+'</td>'
       +'<td class="n" style="font-weight:600">'+t.toLocaleString()+'</td>'
       +'<td class="n">'+r.q4Sales.toLocaleString()+'</td>'
       +'<td class="n"><span class="cov '+cc+'">'+c.toFixed(1)+'%</span></td>'
       +'<td class="n"><span class="dif '+dc+'">'+(d>0?'+':'')+d.toLocaleString()+'</span></td>'
-      +'<td class="c"><select class="cell-sel" data-i="'+idx+'" data-f="keyPlan" onchange="updSel(this)"><option'+(r.keyPlan==='否'?' selected':'')+'>否</option><option'+(r.keyPlan==='是'?' selected':'')+'>是</option></select></td>'
-      +'<td class="c"><select class="cell-sel" data-i="'+idx+'" data-f="isNormal" onchange="updSel(this)"><option'+(r.isNormal==='是'?' selected':'')+'>是</option><option'+(r.isNormal==='否'?' selected':'')+'>否</option></select></td>'
-      +'<td class="editable" contenteditable="true" data-i="'+idx+'" data-f="remark" style="min-width:100px">'+escHtml(r.remark||'')+'</td>'
+      +'<td class="c"><select class="cell-sel" data-i="'+idx+'" data-f="keyPlan" onchange="updSel(this)"'+selDisabled+'><option'+(r.keyPlan==='否'?' selected':'')+'>否</option><option'+(r.keyPlan==='是'?' selected':'')+'>是</option></select></td>'
+      +'<td class="c"><select class="cell-sel" data-i="'+idx+'" data-f="isNormal" onchange="updSel(this)"'+selDisabled+'><option'+(r.isNormal==='是'?' selected':'')+'>是</option><option'+(r.isNormal==='否'?' selected':'')+'>否</option></select></td>'
+      +'<td class="'+editClass+'"'+editAttr+' data-i="'+idx+'" data-f="remark" style="min-width:100px">'+escHtml(r.remark||'')+'</td>'
       +'</tr>';
   }).join('');
   document.getElementById('pageText').textContent=filtered.length>0?'第 '+(s+1)+'-'+e+' 条，共 '+filtered.length.toLocaleString()+' 条':'无匹配数据';
