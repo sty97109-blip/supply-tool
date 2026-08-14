@@ -262,6 +262,7 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
       <option value="risk">风险 SKU</option>
       <option value="needAdd">需要增补</option>
       <option value="abnormal">非正常经营</option>
+      <option value="noSales">无销售数据</option>
     </select>
     <select class="fsel" id="fBiz" onchange="applyFilters()">
       <option value="">全部经营状态</option>
@@ -680,7 +681,7 @@ function calcTotal(r){return(r.stock||0)+(r.outStock||0)+(r.production||0)}
 function calcCov(r){const t=calcTotal(r);return r.q4Sales>0?(t/r.q4Sales*100):0}
 function calcCov2(r){const t=calcTotal(r);const s=(r.q4Sales||0)+(r.q1_26Sales||0);return s>0?(t/s*100):0}
 function calcDiff(r){return calcTotal(r)-r.q4Sales}
-function isRisk(r){const c=calcCov(r),d=Math.abs(calcDiff(r));return c<70||d>50000}
+function isRisk(r){if(!r.q4Sales||r.q4Sales<=0)return false;const c=calcCov(r),d=Math.abs(calcDiff(r));return c<70||d>50000}
 function isActive(r){return r.isNormal==='是'}
 
 function covClass(c){if(c<50)return'low';if(c<80)return'med';if(c<100)return'good';return'great'}
@@ -734,6 +735,7 @@ function applyFilters(){
       if(state==='risk'&&!isRisk(r))return false;
       if(state==='needAdd'&&r.keyPlan!=='是')return false;
       if(state==='abnormal'&&r.isNormal!=='否')return false;
+      if(state==='noSales'&&r.q4Sales>0)return false;
     }
     if(biz&&r.status!==biz)return false;
     if(covMax!==''&&covMax!==null){
@@ -755,12 +757,21 @@ function applyFilters(){
   }
   if(sortKey&&sortDir!==0){
     filtered.sort((a,b)=>{
-      let va,vb;
-      if(sortKey==='cov'){va=calcCov(a);vb=calcCov(b)}
-      else if(sortKey==='cov2'){va=calcCov2(a);vb=calcCov2(b)}
-      else if(sortKey==='diff'){va=calcDiff(a);vb=calcDiff(b)}
-      else return 0;
-      return sortDir*(va-vb);
+      if(sortKey==='cov'){
+        const na=!a.q4Sales||a.q4Sales<=0;
+        const nb=!b.q4Sales||b.q4Sales<=0;
+        if(na&&!nb)return 1;if(!na&&nb)return -1;if(na&&nb)return 0;
+        return sortDir*(calcCov(a)-calcCov(b));
+      }
+      if(sortKey==='cov2'){
+        const sa=(a.q4Sales||0)+(a.q1_26Sales||0);
+        const sb=(b.q4Sales||0)+(b.q1_26Sales||0);
+        const na=sa<=0;const nb=sb<=0;
+        if(na&&!nb)return 1;if(!na&&nb)return -1;if(na&&nb)return 0;
+        return sortDir*(calcCov2(a)-calcCov2(b));
+      }
+      if(sortKey==='diff')return sortDir*(calcDiff(a)-calcDiff(b));
+      return 0;
     });
   }
   cp=1;
@@ -786,6 +797,8 @@ function render(){
     const t=calcTotal(r),c=calcCov(r),c2=calcCov2(r),d=calcDiff(r);
     const risk=isRisk(r)&&isActive(r);
     const cc=covClass(c);
+    const noSales=!r.q4Sales||r.q4Sales<=0;
+    const noSales2=((r.q4Sales||0)+(r.q1_26Sales||0))<=0;
     const dc=d<0?'neg':(d>0?'pos':'');
     const dpc=r.dept==='一部'?'d1':(r.dept==='二部'?'d2':'d3');
     const stCls=r.status==='正常'?'ok':'no';
@@ -807,9 +820,9 @@ function render(){
       +'<td class="n" style="font-weight:600">'+t.toLocaleString()+'</td>'
       +'<td class="n">'+r.q4Sales.toLocaleString()+'</td>'
       +'<td class="n"><span class="dif '+dc+'">'+(d>0?'+':'')+d.toLocaleString()+'</span></td>'
-      +'<td class="n"><span class="cov '+cc+'">'+c.toFixed(1)+'%</span></td>'
+      +'<td class="n">'+(noSales?'<span style="color:#999;font-size:12px">无销售数据</span>':'<span class="cov '+cc+'">'+c.toFixed(1)+'%</span>')+'</td>'
       +'<td class="n">'+((r.q4Sales||0)+(r.q1_26Sales||0)).toLocaleString()+'</td>'
-      +'<td class="n"><span class="cov '+covClass(c2)+'">'+c2.toFixed(1)+'%</span></td>'
+      +'<td class="n">'+(noSales2?'<span style="color:#999;font-size:12px">无销售数据</span>':'<span class="cov '+covClass(c2)+'">'+c2.toFixed(1)+'%</span>')+'</td>'
       +'<td class="c"><select class="cell-sel" data-i="'+idx+'" data-f="keyPlan" onchange="updSel(this)"'+selDisabled+'><option'+(r.keyPlan==='否'?' selected':'')+'>否</option><option'+(r.keyPlan==='是'?' selected':'')+'>是</option></select></td>'
       +'<td class="c"><select class="cell-sel" data-i="'+idx+'" data-f="isNormal" onchange="updSel(this)"'+selDisabled+'><option'+(r.isNormal==='是'?' selected':'')+'>是</option><option'+(r.isNormal==='否'?' selected':'')+'>否</option></select></td>'
       +'<td class="'+editClass+'"'+editAttr+' data-i="'+idx+'" data-f="remark" style="min-width:100px">'+escHtml(r.remark||'')+'</td>'
