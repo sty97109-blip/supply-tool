@@ -160,8 +160,20 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
 .modal-close{position:absolute;top:4px;right:8px;font-size:24px;color:#999;cursor:pointer;background:none;border:none;line-height:1;z-index:1}
 .modal-close:hover{color:#333}
 .modal-hint{position:absolute;top:8px;left:14px;font-size:11px;color:#aaa;pointer-events:none}
+.def-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;justify-content:center;align-items:center}
+.def-overlay.active{display:flex}
+.def-content{position:relative;max-width:720px;width:92vw;max-height:85vh;background:#fff;border-radius:12px;padding:28px 32px 24px;box-shadow:0 8px 32px rgba(0,0,0,0.3);overflow-y:auto}
+.def-close{position:absolute;top:8px;right:14px;font-size:22px;color:#999;cursor:pointer;background:none;border:none;line-height:1;z-index:1}
+.def-close:hover{color:#333}
+.def-content h3{color:#1a8a6e;margin:20px 0 8px;font-size:15px;padding-bottom:4px;border-bottom:2px solid #e8f5f0}
+.def-content h3:first-child{margin-top:4px}
+.def-content p{margin:6px 0;color:#444;font-size:14px;line-height:1.7}
+.def-content .ex{color:#1a56db;background:#f0f7ff;padding:6px 12px;border-radius:6px;font-size:13px;margin:6px 0 12px;border-left:3px solid #1a56db}
+.def-content .ex strong{color:#333}
 .btn-h.btn-guide{background:#fff;color:#1a56db;border:2px solid #1a56db;font-weight:600}
 .btn-h.btn-guide:hover{background:#1a56db;color:#fff}
+.btn-h.btn-def{background:#fff;color:#e67e22;border:2px solid #e67e22;font-weight:600}
+.btn-h.btn-def:hover{background:#e67e22;color:#fff}
 .th-sort{cursor:pointer;user-select:none}
 .th-sort:hover{color:#1a56db}
 .si{font-size:10px;margin-left:2px;display:inline-block;vertical-align:middle}
@@ -222,6 +234,7 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
     <button class="btn-h btn-imp" onclick="document.getElementById('fileInput').click()">↑ 导入在外/在产</button>
     <button class="btn-h btn-dl" onclick="downloadTemplate()">⬇ 导入模板下载</button>
     <button class="btn-h btn-guide" onclick="openGuide()">📋 操作流程图</button>
+    <button class="btn-h btn-def" onclick="openDef()">📖 口径解释</button>
     <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="importStock(event)">
   </div>
 </div>
@@ -240,7 +253,7 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
       <div class="stat-info">
         <div class="stat-label"><span class="si si-r">⚠</span> 风险 SKU 数量</div>
         <div class="stat-val" id="riskCount">0</div>
-        <div class="stat-desc">覆盖比例低于70% 或 差额大于50,000盒</div>
+        <div class="stat-desc">覆盖比例低于70% 或 差额≤−50,000盒（库存严重不足）</div>
       </div>
       <div class="stat-right"><a onclick="filterRisk()">点击筛选风险项</a></div>
     </div>
@@ -681,7 +694,7 @@ function calcTotal(r){return(r.stock||0)+(r.outStock||0)+(r.production||0)}
 function calcCov(r){const t=calcTotal(r);return r.q4Sales>0?(t/r.q4Sales*100):0}
 function calcCov2(r){const t=calcTotal(r);const s=(r.q4Sales||0)+(r.q1_26Sales||0);return s>0?(t/s*100):0}
 function calcDiff(r){return calcTotal(r)-r.q4Sales}
-function isRisk(r){if(!r.q4Sales||r.q4Sales<=0)return false;const c=calcCov(r),d=Math.abs(calcDiff(r));return c<70||d>50000}
+function isRisk(r){if(!r.q4Sales||r.q4Sales<=0)return false;const c=calcCov(r),d=calcDiff(r);return c<70||d<=-50000}
 function isActive(r){return r.isNormal==='是'}
 
 function covClass(c){if(c<50)return'low';if(c<80)return'med';if(c<100)return'good';return'great'}
@@ -1049,9 +1062,45 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.cla
     scale=1;tx=0;ty=0;if(img)img.style.transform='';
     if(zoomLabel)zoomLabel.textContent='100%';
   };
-  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeGuide()});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeGuide();closeDef()}});
+  window.openDef=function(){document.getElementById('defModal').classList.add('active')};
+  window.closeDef=function(){document.getElementById('defModal').classList.remove('active')};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else setTimeout(init,0);
 })();
 </script>
+
+<!-- 口径解释弹窗 -->
+<div class="def-overlay" id="defModal" onclick="if(event.target===this)closeDef()">
+  <div class="def-content">
+    <button class="def-close" onclick="closeDef()">×</button>
+    <p style="color:#666;font-size:13px;margin-bottom:16px">以下以 SPX00001582（HISEWAY芦荟胶囊）为例说明各字段口径。该SKU总库存1,889盒，25年同期销量10,789盒，9月-3月同期销量19,983盒。</p>
+
+    <h3>覆盖比例</h3>
+    <p>总库存 ÷ 25年同期销量 × 100%，反映当前库存能覆盖去年同期销量的程度。</p>
+    <div class="ex"><strong>例：</strong>1,889 ÷ 10,789 = <strong>17.5%</strong>，总库存仅覆盖了去年同期销量的17.5%</div>
+
+    <h3>差额</h3>
+    <p>总库存 − 25年同期销量。正值表示库存富余，负值表示库存缺口。</p>
+    <div class="ex"><strong>例：</strong>1,889 − 10,789 = <strong>−8,900</strong>，距去年同期销量有8,900盒的库存缺口</div>
+
+    <h3>9月-3月同期销量</h3>
+    <p>2025年9月至2026年3月的历史总销量（含25年9-12月 + 26年1-3月），用于跨年度参考。</p>
+
+    <h3>9月-3月覆盖比例</h3>
+    <p>总库存 ÷ 9月-3月同期销量 × 100%，反映库存覆盖跨年度销售周期的程度。</p>
+    <div class="ex"><strong>例：</strong>1,889 ÷ 19,983 = <strong>9.5%</strong>，总库存仅覆盖了9月-3月同期销量的9.5%</div>
+
+    <h3>是否增补计划</h3>
+    <p>覆盖比例低于90%时，需选择是否补计划。<strong>不补计划需在备注中说明原因。</strong></p>
+
+    <h3>是否正常经营</h3>
+    <p>覆盖比例未达90%但实际不存在缺货风险，或因特殊原因不会补货时选"<strong>否</strong>"，该SKU将从风险统计中剔除。</p>
+    <p style="color:#888;font-size:13px;margin-top:8px"><strong>常见场景：</strong></p>
+    <p style="color:#666;font-size:13px">1. 近效期秒杀导致同期销量虚高，实际库存已满足当期销售 → 选否，备注说明原因</p>
+    <p style="color:#666;font-size:13px">2. 预淘汰产品，下最后一批计划处理后淘汰 → 选否，备注说明原因</p>
+    <p style="color:#666;font-size:13px">3. 政策变更/含特商品，销量大幅下滑，同期销量不可参考 → 选否，备注说明原因</p>
+  </div>
+</div>
+
 </body>
 </html>
