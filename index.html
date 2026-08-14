@@ -820,11 +820,41 @@ function processImportData(rows){
       cnt++;
     }else{skipped++;}
   }
-  toSave.forEach(r=>saveToSupabase(r));
+  // 批量保存到 Supabase（避免大量并发请求失败）
+  if(toSave.length>0) batchSaveToSupabase(toSave);
   applyFilters();
   let msg='已导入 '+cnt+' 条数据';
   if(skipped>0)msg+='，'+skipped+' 条未匹配';
   toast(msg);
+}
+
+async function batchSaveToSupabase(rows){
+  if(!supabaseReady)return;
+  try{
+    const cols=await getEditsColumns();
+    const batchSize=50;
+    for(let i=0;i<rows.length;i+=batchSize){
+      const batch=rows.slice(i,i+batchSize);
+      const payload=batch.map(row=>{
+        const fullData={
+          erp_id:row.erpId,dept:row.dept,
+          out_stock:row.outStock||0,production:row.production||0,
+          stock:row.stock||0,key_plan:row.keyPlan||'否',
+          is_normal:row.isNormal||'是',remark:row.remark||'',
+          updated_at:new Date().toISOString()
+        };
+        const editData={};
+        cols.forEach(c=>{if(fullData[c]!==undefined)editData[c]=fullData[c];});
+        if(!editData.updated_at)editData.updated_at=new Date().toISOString();
+        return editData;
+      });
+      const {error}=await sb.from('sku_edits').upsert(payload,{onConflict:'erp_id,dept'});
+      if(error)console.error('Batch save error:',error);
+      await new Promise(r=>setTimeout(r,200));
+    }
+    console.log('Batch save complete:',rows.length,'rows');
+    saveToLocal();
+  }catch(e){console.error('Batch save exception:',e)}
 }
 
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
