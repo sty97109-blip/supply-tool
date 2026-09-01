@@ -294,6 +294,7 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
       <div>
         <div class="tbl-title">供应覆盖明细</div>
         <div class="tbl-sub">黄色列可维护；数据实时同步至云端数据库</div>
+        <div id="stockUpdateTime" style="font-size:13px;color:#999;margin-top:4px">在库库存更新时间：-</div>
       </div>
       <div class="tbl-meta">
         <span style="color:#dc2626;font-weight:600">⚠️ 备货请注意25年同期销量未估算断货损失销量！</span>
@@ -313,6 +314,7 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
           <th>采销人员</th>
           <th>计划人员</th>
           <th class="n">在库库存</th>
+
           <th class="n">在外库存</th>
           <th class="n">在产计划</th>
           <th class="n">总库存</th>
@@ -515,6 +517,7 @@ async function loadFromSupabase(){
           q4Sales:Number(r.q4_sales)||0,
           q1_26Sales:Q1_26_SALES[r.erp_id]||0,
           stock:Number(r.stock)||0,
+          stockUpdatedAt:r.stock_updated_at||'',
           outStock:ed?Number(ed.out_stock)||0:0,
           production:ed?Number(ed.production)||0:0,
           keyPlan:ed?(ed.key_plan||'否'):(r.key_plan||'否'),
@@ -525,6 +528,7 @@ async function loadFromSupabase(){
       hideLoading();
       populateFilters();
       applyFilters();
+      updateStockTimeDisplay();
       updateSyncStatus('online');
     }
   }catch(e){
@@ -549,6 +553,7 @@ function useFallbackData(){
   hideLoading();
   populateFilters();
   applyFilters();
+  updateStockTimeDisplay();
   updateSyncStatus('offline');
 }
 
@@ -571,6 +576,7 @@ async function seedSupabase(){
         planner:r.planner,
         q4_sales:r.q4Sales,
         stock:r.stock,
+        stock_updated_at:r.stockUpdatedAt||'',
         key_plan:r.keyPlan||'',
         is_normal:r.isNormal||'是'
       }));
@@ -665,7 +671,7 @@ function saveToSupabase(row){
 function saveToLocal(){
   try{
     localStorage.setItem('q4_supply_data_v5',JSON.stringify(allData.map(r=>({
-      erpId:r.erpId,dept:r.dept,stock:r.stock,outStock:r.outStock,
+      erpId:r.erpId,dept:r.dept,stock:r.stock,stockUpdatedAt:r.stockUpdatedAt,outStock:r.outStock,
       production:r.production,keyPlan:r.keyPlan,isNormal:r.isNormal,remark:r.remark
     }))));
   }catch(e){}
@@ -827,7 +833,8 @@ function render(){
       +'<td style="font-size:12px;color:#666;max-width:180px;overflow:hidden;text-overflow:ellipsis" title="'+escHtml(r.manufacturer||'')+'">'+escHtml(r.manufacturer||'')+'</td>'
       +'<td>'+escHtml(r.buyer||'')+'</td>'
       +'<td>'+escHtml(r.planner||'')+'</td>'
-      +'<td class="n'+editClass+'"'+editAttr+' data-i="'+idx+'" data-f="stock">'+(r.stock||0).toLocaleString()+'</td>'
+      +'<td class="n'+editClass+'"'+editAttr+' data-i="'+idx+'" data-f="stock"><div>'+(r.stock||0).toLocaleString()+'</div>'+(r.stockUpdatedAt?'<div style="font-size:11px;color:#aaa;margin-top:2px">'+r.stockUpdatedAt+'</div>':'')+'</td>'
+      
       +'<td class="n'+editClass+'"'+editAttr+' data-i="'+idx+'" data-f="outStock">'+(r.outStock||0).toLocaleString()+'</td>'
       +'<td class="n'+editClass+'"'+editAttr+' data-i="'+idx+'" data-f="production">'+(r.production||0).toLocaleString()+'</td>'
       +'<td class="n" style="font-weight:600">'+t.toLocaleString()+'</td>'
@@ -844,6 +851,12 @@ function render(){
   document.getElementById('pageText').textContent=filtered.length>0?'第 '+(s+1)+'-'+e+' 条，共 '+filtered.length.toLocaleString()+' 条':'无匹配数据';
   document.getElementById('totalCount').textContent='共 '+filtered.length.toLocaleString()+' 条';
   renderPag();
+}
+
+function updateStockTimeDisplay(){
+  const el=document.getElementById('stockUpdateTime');if(!el)return;
+  const latest=allData.map(r=>r.stockUpdatedAt).filter(Boolean).sort().pop();
+  el.textContent='在库库存更新时间：'+(latest||'未更新');
 }
 
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
