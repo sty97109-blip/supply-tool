@@ -833,7 +833,7 @@ function render(){
       +'<td style="font-size:12px;color:#666;max-width:180px;overflow:hidden;text-overflow:ellipsis" title="'+escHtml(r.manufacturer||'')+'">'+escHtml(r.manufacturer||'')+'</td>'
       +'<td>'+escHtml(r.buyer||'')+'</td>'
       +'<td>'+escHtml(r.planner||'')+'</td>'
-      +'<td class="n'+editClass+'"'+editAttr+' data-i="'+idx+'" data-f="stock"><div>'+(r.stock||0).toLocaleString()+'</div>'+(r.stockUpdatedAt?'<div style="font-size:11px;color:#aaa;margin-top:2px">'+r.stockUpdatedAt+'</div>':'')+'</td>'
+      +'<td class="n'+editClass+'"'+editAttr+' data-i="'+idx+'" data-f="stock">'+(r.stock||0).toLocaleString()+'</td>'
       
       +'<td class="n'+editClass+'"'+editAttr+' data-i="'+idx+'" data-f="outStock">'+(r.outStock||0).toLocaleString()+'</td>'
       +'<td class="n'+editClass+'"'+editAttr+' data-i="'+idx+'" data-f="production">'+(r.production||0).toLocaleString()+'</td>'
