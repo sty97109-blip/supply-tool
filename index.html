@@ -276,8 +276,13 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
       <option value="">全部状态</option>
       <option value="covered">已完成覆盖</option>
       <option value="risk">风险 SKU</option>
-      <option value="needAdd">需要增补</option>
       <option value="noSales">无销售数据</option>
+    </select>
+    <select class="fsel" id="fCapacity" onchange="applyFilters()">
+      <option value="">全部产能</option>
+      <option value="是">产能满足</option>
+      <option value="否">产能不满足</option>
+      <option value="empty">未填写</option>
     </select>
     <select class="fsel" id="fBiz" onchange="applyFilters()">
       <option value="">全部经营状态</option>
@@ -366,7 +371,7 @@ try {
 // ===== 登录验证逻辑 =====
 const USERS = {
   'YYYCKZ': { pass: 'yyyckz', role: 'admin', name: '管理员' },
-  'YYYGT': { pass: 'yyygt', role: 'operator', name: '运营人员' }
+  'YYYGT': { pass: 'yyygt', role: 'operator', name: '运销人员' }
 };
 let currentUser = null;
 let userRole = 'viewer'; // default to read-only
@@ -431,7 +436,7 @@ function applyUserRole(){
   // 更新用户显示
   var userDisplay = document.getElementById('userName');
   if(userDisplay && currentUser){
-    var roleLabel = userRole==='admin'?'(管理员)':userRole==='operator'?'(运营)':'';
+    var roleLabel = userRole==='admin'?'(管理员)':userRole==='operator'?'(运销)':'';
     userDisplay.textContent = currentUser + ' ' + roleLabel;
   }
   if(userRole==='admin'){
@@ -759,7 +764,8 @@ function applyFilters(){
   const covMax=document.getElementById('fCovMax').value;
   const state=document.getElementById('fState').value;
   const biz=document.getElementById('fBiz').value;
-  console.log('[Filter]',{q,dept,planner,buyer,mfr,covMin,covMax,state,biz,allDataLen:allData.length});
+  const cap=document.getElementById('fCapacity')?document.getElementById('fCapacity').value:'';
+  console.log('[Filter]',{q,dept,planner,buyer,mfr,covMin,covMax,state,biz,cap,allDataLen:allData.length});
   try{
   filtered=allData.filter(r=>{
     const nm=(r.name||'').toLowerCase();
@@ -777,6 +783,9 @@ function applyFilters(){
       if(state==='noSales'&&r.q4Sales>0)return false;
     }
     if(biz&&r.status!==biz)return false;
+    if(cap==='是'&&r.capacitySatisfied!=='是')return false;
+    if(cap==='否'&&r.capacitySatisfied!=='否')return false;
+    if(cap==='empty'&&(r.capacitySatisfied==='是'||r.capacitySatisfied==='否'))return false;
     if(covMin!==''&&covMin!==null){
       if(calcCov(r)<parseFloat(covMin))return false;
     }
@@ -830,7 +839,7 @@ function applyFilters(){
   render();
 }
 function resetFilters(){
-  ['searchInput','fDept','fPlanner','fBuyer','fMfr','fCovMin','fCovMax','fState','fBiz'].forEach(id=>{document.getElementById(id).value=''});
+  ['searchInput','fDept','fPlanner','fBuyer','fMfr','fCovMin','fCovMax','fState','fCapacity','fBiz'].forEach(id=>{document.getElementById(id).value=''});
   filtered=[...allData];cp=1;updateStats();render();
 }
 function filterRisk(){
@@ -854,9 +863,10 @@ function render(){
     const dpc=r.dept==='一部'?'d1':(r.dept==='二部'?'d2':'d3');
     const stCls=r.status==='正常'?'ok':'no';
     const isReadonly = userRole==='viewer';
+    const isAdmin = userRole==='admin';
     const isGtUser = userName==='YYYGT';
-    // 权限控制：admin/operator可编辑大部分字段，viewer只读，YYYGT只填销售/运营需求
-    const canEdit = !isReadonly;
+    // 权限控制：普通字段仅admin可编辑，viewer只读，YYYGT只填销售/运营需求
+    const canEdit = isAdmin;
     const editAttr = canEdit ? ' contenteditable="true"' : '';
     const editClass = canEdit ? ' editable' : '';
     const selDisabled = canEdit ? '' : ' disabled';
