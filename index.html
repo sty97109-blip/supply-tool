@@ -855,16 +855,11 @@ function render(){
     const stCls=r.status==='正常'?'ok':'no';
     const isReadonly = userRole==='viewer';
     const isGtUser = userName==='YYYGT';
-    // 权限控制：admin不填销售/运营需求，viewer只读，YYYGT只填销售/运营需求
-    let fieldEditable = !isReadonly;
-    if(isGtUser){
-      fieldEditable=(f==='salesDemand'||f==='opsDemand');
-    }else if(!isReadonly){
-      fieldEditable=(f!=='salesDemand'&&f!=='opsDemand');
-    }
-    const editAttr = fieldEditable ? ' contenteditable="true"' : '';
-    const editClass = fieldEditable ? ' editable' : '';
-    const selDisabled = fieldEditable ? '' : ' disabled';
+    // 权限控制：admin/operator可编辑大部分字段，viewer只读，YYYGT只填销售/运营需求
+    const canEdit = !isReadonly;
+    const editAttr = canEdit ? ' contenteditable="true"' : '';
+    const editClass = canEdit ? ' editable' : '';
+    const selDisabled = canEdit ? '' : ' disabled';
     // 沟通处颜色：YYYCKZ黑字，YYYGT红字
     const remarkColor = r.editedBy==='YYYGT' ? 'color:#dc2626' : (r.remark?'color:#000':'');
     return '<tr class="'+(risk?'risk':'')+'">'
@@ -889,7 +884,7 @@ function render(){
       +'<td class="n'+(isGtUser?' editable':'')+'"'+(isGtUser?' contenteditable="true"':'')+' data-i="'+idx+'" data-f="salesDemand">'+(r.salesDemand||0).toLocaleString()+'</td>'
       +'<td class="n'+(isGtUser?' editable':'')+'"'+(isGtUser?' contenteditable="true"':'')+' data-i="'+idx+'" data-f="opsDemand">'+(r.opsDemand||0).toLocaleString()+'</td>'
       +'<td class="c"><select class="cell-sel" data-i="'+idx+'" data-f="capacitySatisfied" onchange="updSel(this)"'+selDisabled+'><option value=""'+(!r.capacitySatisfied?' selected':'')+'>-</option><option'+(r.capacitySatisfied==='是'?' selected':'')+'>是</option><option'+(r.capacitySatisfied==='否'?' selected':'')+'>否</option></select></td>'
-      +'<td class="c"><input type="date" class="cell-date" data-i="'+idx+'" data-f="planDate" value="'+(r.planDate||'')+'" onchange="updDate(this)"'+(fieldEditable?'':' disabled')+' style="font-family:inherit;width:130px;border:1px solid #d1d5db;border-radius:4px;padding:2px 4px"></td>'
+      +'<td class="c"><input type="date" class="cell-date" data-i="'+idx+'" data-f="planDate" value="'+(r.planDate||'')+'" onchange="updDate(this)"'+(canEdit?'':' disabled')+' style="font-family:inherit;width:130px;border:1px solid #d1d5db;border-radius:4px;padding:2px 4px"></td>'
       +'</tr>';
   }).join('');
   document.getElementById('pageText').textContent=filtered.length>0?'第 '+(s+1)+'-'+e+' 条，共 '+filtered.length.toLocaleString()+' 条':'无匹配数据';
