@@ -325,6 +325,10 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
           <th class="n">在外库存</th>
           <th class="n">在产计划</th>
           <th class="n">总库存</th>
+          <th style="width:150px;min-width:150px">品种周转变化</th>
+          <th style="width:120px;min-width:120px">本月活动计划</th>
+          <th style="width:150px;min-width:150px">活动规划</th>
+          <th class="c" style="width:110px;min-width:110px">能否做活动</th>
           <th class="n">25年同期销量</th>
           <th class="n th-sort" onclick="toggleSort('diff')">差额<span id="si-diff" class="si">⇅</span></th>
           <th class="n th-sort" onclick="toggleSort('cov')">覆盖比例<span id="si-cov" class="si">⇅</span></th>
@@ -515,9 +519,19 @@ async function loadFromSupabase(){
         });
       }
       // 合并数据
+      // ===== 运营推送的活动数据：按商品ERP ID匹配（ongoing=进行中活动/周转，planned=重点活动/计划/规划）=====
+      let actMapO = {}, actMapP = {};
+      try {
+        const acts = await fetchAllRows('sku_activity');
+        (acts || []).forEach(a => {
+          if (a.dept && a.dept !== '二部') return;     // 只接二部推送
+          (a.kind === 'planned' ? actMapP : actMapO)[a.erp_id] = a;
+        });
+      } catch (e) { console.warn('sku_activity 拉取失败（不影响其他功能）', e); }
       allData=baseData.map(r=>{
         const key=r.erp_id+'||'+r.dept;
         const ed=editsMap[key];
+        const ao = actMapO[r.erp_id] || {}, ap = actMapP[r.erp_id] || {};
         return {
           erpId:r.erp_id||'',
           dept:r.dept||'',
@@ -538,7 +552,16 @@ async function loadFromSupabase(){
           salesDemand:ed?Number(ed.sales_demand)||0:0,
           opsDemand:ed?Number(ed.ops_demand)||0:0,
           remark:ed?(ed.remark||''):(r.remark||''),
-          editedBy:ed?(ed.edited_by||''):(r.edited_by||'')
+          editedBy:ed?(ed.edited_by||''):(r.edited_by||''),
+          // —— 活动 6 字段（运营推送只读 + 采销反馈）——
+          curActs:   ao.act_names || '',                                    // 当前活动
+          turnText:  ao.turn_text || '',                                    // 品种周转变化
+          keyAct:    ap.key_act   || ao.key_act || '',                      // 重点活动
+          actPlan:   ap.act_plan  || ao.act_plan || '',                     // 本月活动计划
+          actRoad:   ap.act_road  || ao.act_road || '',                     // 活动规划
+          actFb:     ed ? (ed.act_feedback || '') : '',                     // 能否做活动（你们填）
+          actFbNote: ed ? (ed.act_feedback_note || '') : '',
+          actFbAt:   ed ? (ed.act_feedback_at  || '') : ''
         };
       });
       hideLoading();
@@ -666,6 +689,8 @@ function saveToSupabase(row){
   window._saveTimers[key]=setTimeout(async()=>{
     try{
       const cols=await getEditsColumns();
+      // 白名单固定：严禁添加 act_feedback / act_feedback_note / act_feedback_at ——
+      //    加进来会导致导入/普通编辑覆盖采销的「能否做活动」填写结果。
       const fullData={
         erp_id:row.erpId,dept:row.dept,
         out_stock:row.outStock||0,production:row.production||0,
@@ -870,12 +895,13 @@ function render(){
     const editAttr = canEdit ? ' contenteditable="true"' : '';
     const editClass = canEdit ? ' editable' : '';
     const selDisabled = canEdit ? '' : ' disabled';
+    const canActFb = isAdmin;   // 「能否做活动」仅管理员(admin)可填；如需运销(YYYGT)也可填，改成 = !isReadonly
     // 沟通处颜色：YYYCKZ黑字，YYYGT红字
     const remarkColor = r.editedBy==='YYYGT' ? 'color:#dc2626' : (r.remark?'color:#000':'');
     return '<tr class="'+(risk?'risk':'')+'">'
       +'<td style="font-size:12px;color:#888">'+r.erpId+'</td>'
       +'<td><span class="db '+dpc+'">'+r.dept+'</span></td>'
-      +'<td><div class="pname">'+escHtml(r.name)+'</div><div class="pstatus '+stCls+'">'+r.status+'</div></td>'
+      +'<td><div class="pname">'+escHtml(r.name)+'</div><div class="pstatus '+stCls+'">'+r.status+actKeyTag(r)+actCurTag(r)+'</div></td>'
       +'<td style="font-size:12px;color:#666">'+escHtml(r.spec||'')+'</td>'
       +'<td style="font-size:12px;color:#666;max-width:180px;overflow:hidden;text-overflow:ellipsis" title="'+escHtml(r.manufacturer||'')+'">'+escHtml(r.manufacturer||'')+'</td>'
       +'<td>'+escHtml(r.buyer||'')+'</td>'
@@ -885,6 +911,10 @@ function render(){
       +'<td class="n'+editClass+'"'+editAttr+' data-i="'+idx+'" data-f="outStock">'+(r.outStock||0).toLocaleString()+'</td>'
       +'<td class="n'+editClass+'"'+editAttr+' data-i="'+idx+'" data-f="production">'+(r.production||0).toLocaleString()+'</td>'
       +'<td class="n" style="font-weight:600">'+t.toLocaleString()+'</td>'
+      +actTurnTd(r)
+      +actPlanTd(r)
+      +actRoadTd(r)
+      +actFbTd(r,idx,canActFb)
       +'<td class="n">'+r.q4Sales.toLocaleString()+'</td>'
       +'<td class="n"><span class="dif '+dc+'">'+(d>0?'+':'')+d.toLocaleString()+'</span></td>'
       +'<td class="n">'+(noSales?'<span style="color:#999;font-size:12px">无销售数据</span>':'<span class="cov '+cc+'">'+c.toFixed(1)+'%</span>')+'</td>'
@@ -951,6 +981,61 @@ function updSel(el){
     if(o){o[f]=el.value;saveToSupabase(o);}
     updateStats();render();
   }
+}
+// ===== 活动 6 字段渲染（前5列只读：运营每日推送 sku_activity，按ERP ID匹配；第6列采销可填） =====
+function actTurnTd(r){
+  if(!r.turnText) return '<td class="n"></td>';
+  var alarm = r.turnText.indexOf('提醒')>=0;
+  return '<td class="n">'+(alarm?'<span style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:1px 6px;font-size:12px;color:#c2410c" title="'+escHtml(r.turnText)+'">🔔'+escHtml(r.turnText.split('(提醒')[0])+'</span>':'<span style="color:#555">'+escHtml(r.turnText)+'</span>')+'</td>';
+}
+function actCurTag(r){
+  if(!r.curActs) return '';
+  return r.curActs.split('、').map(function(a){
+    return '<span style="display:inline-block;margin-left:6px;padding:1px 8px;border-radius:10px;font-size:11px;line-height:17px;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8">'+escHtml(a)+'</span>';
+  }).join('');
+}
+function actKeyTag(r){
+  if(!r.keyAct) return '';
+  return '<span style="display:inline-block;margin-left:6px;padding:1px 8px;border-radius:10px;font-size:11px;line-height:17px;background:#fff1e6;border:1px solid #ffd6a8;color:#d4380d;font-weight:600">'+escHtml(r.keyAct)+'</span>';
+}
+function actPlanTd(r){
+  return '<td class="c" style="font-size:12px;color:#555;white-space:nowrap">'+escHtml(r.actPlan||'')+'</td>';
+}
+function actRoadTd(r){
+  return '<td class="c" style="font-size:12px;color:#555">'+escHtml((r.actRoad||'').split('|').join(' · '))+'</td>';
+}
+// ⑥ 能否做活动：唯一可写列。留空=待计划填写；title 带填报时间与原因
+function actFbTd(r,idx,canEdit){
+  var v=r.actFb||'';
+  var at=r.actFbAt?String(r.actFbAt).slice(5,10).replace('-','/'):'';
+  var tip=((at?('填报 '+at):'')+(r.actFbNote?(' · 原因:'+r.actFbNote):''));
+  var inner=canEdit
+    ?'<select class="cell-sel" data-i="'+idx+'" data-f="actFb" onchange="updActFb(this)">'
+      +'<option value=""'+(!v?' selected':'')+'>待计划填写</option>'
+      +'<option value="能做"'+(v==='能做'?' selected':'')+'>能做</option>'
+      +'<option value="待定"'+(v==='待定'?' selected':'')+'>待定</option>'
+      +'<option value="不能做"'+(v==='不能做'?' selected':'')+'>不能做</option>'
+      +'</select>'
+    :'<span>'+(escHtml(v)||'待计划填写')+'</span>';
+  return '<td class="c"'+(tip?' title="'+escHtml(tip)+'"':'')+'>'+inner+'</td>';
+}
+// 保存：只写 sku_edits 的 3 个反馈列（部分列 upsert），不碰其他任何列
+function updActFb(el){
+  var idx=parseInt(el.dataset.i);
+  var r=filtered[idx]; if(!r) return;
+  r.actFb=el.value;
+  r.actFbAt=new Date().toISOString();
+  var note=prompt('原因/说明（可留空；选"不能做"建议填写，如 缺货/成本不行/排期冲突）：',r.actFbNote||'');
+  if(note!==null) r.actFbNote=note.trim();
+  if(supabaseReady){
+    sb.from('sku_edits').upsert({
+      erp_id:r.erpId, dept:r.dept,
+      act_feedback:r.actFb, act_feedback_note:r.actFbNote,
+      act_feedback_at:r.actFbAt, updated_at:new Date().toISOString()
+    },{onConflict:'erp_id,dept'})
+    .then(function(res){ if(res.error) toast('保存失败：'+res.error.message); else toast('已保存'); });
+  } else { toast('未连接云端，稍后自动重试'); }
+  render();
 }
 document.getElementById('tbody').addEventListener('blur',function(e){if(e.target.classList.contains('editable'))updCell(e.target)},true);
 
@@ -1025,6 +1110,9 @@ function processImportData(rows){
     let r=allData.find(x=>x.erpId===erp&&dept&&x.dept===dept);
     if(!r&&erp)r=allData.find(x=>x.erpId===erp);
     if(r){
+      // 导入只允许覆盖下面 4 个字段（在外/在产/销售需求/运营需求）。
+      //    活动 6 字段（curActs/turnText/keyAct/actPlan/actRoad 运营推送只读；
+      //    actFb/actFbNote/actFbAt 采销反馈）严禁在此赋值 —— 保证导入永不影响活动列。
       if(iOut>=0)r.outStock=parseInt(cols[iOut])||0;
       if(iProd>=0)r.production=parseInt(cols[iProd])||0;
       if(iSales>=0)r.salesDemand=parseInt(cols[iSales])||0;
@@ -1049,6 +1137,8 @@ async function batchSaveToSupabase(rows){
     for(let i=0;i<rows.length;i+=batchSize){
       const batch=rows.slice(i,i+batchSize);
       const payload=batch.map(row=>{
+        // 白名单固定：严禁添加 act_feedback / act_feedback_note / act_feedback_at ——
+        //    加进来会导致导入/普通编辑覆盖采销的「能否做活动」填写结果。
         const fullData={
           erp_id:row.erpId,dept:row.dept,
           out_stock:row.outStock||0,production:row.production||0,
