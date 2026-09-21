@@ -101,7 +101,7 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
 .d2{background:#e8f0fe;color:#3b6dd4}
 .d3{background:#fef3e8;color:#d4853b}
 .pname{font-weight:600;color:#1a1a1a}
-.pstatus{font-size:11px;margin-top:1px}
+.pstatus{font-size:11px;margin-top:1px;display:flex;flex-wrap:wrap;align-items:center;row-gap:2px}
 .pstatus.ok{color:#1a8a6e}
 .pstatus.no{color:#999}
 .cov{font-weight:600}
@@ -143,6 +143,20 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
 .login-btn:hover{opacity:.9}
 .login-btn:active{transform:scale(.98)}
 .login-err{color:#e74c3c;font-size:13px;margin-top:14px;min-height:20px}
+.pp-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.55);z-index:10002;justify-content:center;align-items:center}
+.pp-overlay.active{display:flex}
+.pp-card{background:#fff;border-radius:16px;width:560px;max-width:92vw;max-height:82vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.28);overflow:hidden}
+.pp-head{font-size:16px;font-weight:700;color:#1a1a1a;padding:20px 24px 14px;border-bottom:1px solid #f0f0f0}
+.pp-body{padding:16px 24px;overflow-y:auto;flex:1;font-size:14px;color:#444}
+.pp-body .pp-item{display:flex;gap:10px;padding:9px 12px;border:1px solid #f0f0f0;border-radius:9px;margin-bottom:8px;background:#fafbfc}
+.pp-body .pp-name{font-weight:600;color:#1a1a1a;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}
+.pp-body .pp-turn{color:#555;flex:1;line-height:1.5;word-break:break-all}
+.pp-foot{display:flex;gap:12px;padding:16px 24px 20px;border-top:1px solid #f0f0f0}
+.pp-btn{flex:1;padding:11px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;border:none}
+.pp-btn-ghost{background:#f1f3f5;color:#555}
+.pp-btn-ghost:hover{background:#e9ecef}
+.pp-btn-primary{background:linear-gradient(135deg,#1a8a6e,#1db88a);color:#fff}
+.pp-btn-primary:hover{opacity:.9}
 .sync-indicator{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 10px;border-radius:12px;background:rgba(255,255,255,.15)}
 .sync-dot{width:6px;height:6px;border-radius:50%;background:#4ade80;animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
@@ -188,14 +202,20 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
   <div class="login-card">
     <div class="login-logo">📋</div>
     <div class="login-brand">四季度供应覆盖管理系统</div>
-    <div class="login-sub">请输入账号密码登录系统</div>
+    <div class="login-sub">请输入账号密码并选择计划人员登录</div>
     <div class="login-field">
       <label>账号</label>
-      <input type="text" id="loginUser" placeholder="请输入账号" autocomplete="off">
+      <input type="text" id="loginUser" placeholder="请输入账号" autocomplete="off" oninput="fillLoginPlanners(this.value)">
     </div>
     <div class="login-field">
       <label>密码</label>
       <input type="password" id="loginPass" placeholder="请输入密码" autocomplete="off">
+    </div>
+    <div class="login-field">
+      <label>人员选择</label>
+      <select id="loginPlanner" style="width:100%;padding:11px 14px;border:1.5px solid #e4e4e4;border-radius:9px;font-size:14px;outline:none;background:#fff;color:#333">
+        <option value="">请选择人员</option>
+      </select>
     </div>
     <div class="login-field" style="display:flex;align-items:center;gap:6px;margin-bottom:20px">
       <input type="checkbox" id="loginRemember" style="width:auto;margin:0">
@@ -203,6 +223,18 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
     </div>
     <button class="login-btn" onclick="doLogin()">登 录</button>
     <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- 计划人员周转变化提醒弹窗 -->
+<div class="pp-overlay" id="plannerPopup">
+  <div class="pp-card">
+    <div class="pp-head">📌 品种周转变化提醒</div>
+    <div class="pp-body" id="plannerPopupBody"></div>
+    <div class="pp-foot">
+      <button class="pp-btn pp-btn-ghost" onclick="closePlannerPopup()">已知悉</button>
+      <button class="pp-btn pp-btn-primary" onclick="plannerGoDetail()">点我了解详情</button>
+    </div>
   </div>
 </div>
 
@@ -234,6 +266,7 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
     </div>
     <button class="btn-h btn-imp" onclick="document.getElementById('fileInput').click()">↑ 导入在外/在产</button>
     <button class="btn-h btn-dl" onclick="downloadTemplate()">⬇ 导入模板下载</button>
+    <button class="btn-h btn-dl" onclick="exportMine()">⬇ 导出我的数据</button>
     <button class="btn-h btn-guide" onclick="openGuide()">📋 操作流程图</button>
     <button class="btn-h btn-def" onclick="openDef()">📖 口径解释</button>
     <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="importStock(event)">
@@ -289,6 +322,31 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
       <option value="正常">正常</option>
       <option value="预淘汰">预淘汰</option>
     </select>
+    <select class="fsel" id="fActFb" onchange="applyFilters()">
+      <option value="">全部能否做活动</option>
+      <option value="能做">能做</option>
+      <option value="待定">待定</option>
+      <option value="不能做">不能做</option>
+      <option value="待计划填写">待计划填写</option>
+    </select>
+    <select class="fsel" id="fActStatus" onchange="applyFilters()">
+      <option value="">全部活动情况</option>
+      <option value="key">重点活动品种</option>
+      <option value="cur">正在活动</option>
+      <option value="plan">预备活动</option>
+    </select>
+    <select class="fsel" id="fCurAct" onchange="applyFilters()">
+      <option value="">全部当前活动</option>
+      <option value="秒杀">秒杀</option>
+      <option value="满减满赠">满减满赠</option>
+      <option value="捡漏专区">捡漏专区</option>
+      <option value="大型专区">大型专区</option>
+      <option value="特价专区">特价专区</option>
+    </select>
+    <select class="fsel" id="fTurn" onchange="applyFilters()">
+      <option value="">全部周转变化</option>
+      <option value="has">有周转变化</option>
+    </select>
     <button class="fbtn" onclick="resetFilters()" title="重置筛选">✕</button>
   </div>
 
@@ -325,7 +383,7 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
           <th class="n">在外库存</th>
           <th class="n">在产计划</th>
           <th class="n">总库存</th>
-          <th style="width:150px;min-width:150px">品种周转变化</th>
+          <th class="c" style="width:150px;min-width:150px">品种周转变化</th>
           <th style="width:120px;min-width:120px">本月活动计划</th>
           <th style="width:150px;min-width:150px">活动规划</th>
           <th class="c" style="width:110px;min-width:110px">能否做活动</th>
@@ -335,7 +393,6 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
           <th class="n">9月-3月同期销量</th>
           <th class="n th-sort" onclick="toggleSort('cov2')">9月-3月覆盖比例<span id="si-cov2" class="si">⇅</span></th>
           <th>沟通处</th>
-          <th class="n">销售侧需求</th>
           <th class="n">运营侧需求</th>
           <th class="c">产能是否满足</th>
           <th>计划下达时间</th>
@@ -374,18 +431,39 @@ try {
 
 // ===== 登录验证逻辑 =====
 const USERS = {
-  'YYYCKZ': { pass: 'yyyckz', role: 'admin', name: '管理员' },
-  'YYYGT': { pass: 'yyygt', role: 'operator', name: '运销人员' }
+  'YYYCKZ': { pass: 'yyyckz', role: 'admin', name: '管理员', pick: 'planner' },
+  'YYYGT': { pass: 'yyygt', role: 'operator', name: '运销人员', pick: '运营' },
+  'YYYLL': { pass: 'yyyll', role: 'viewer', name: '仅浏览', pick: '仅浏览' }
 };
 let currentUser = null;
 let userRole = 'viewer'; // default to read-only
 let userName = ''; // 当前登录账号名
 const SK_AUTH='q4_supply_auth';
+const SK_PLANNER='q4_supply_planner';
+const PLANNERS=['何浩宇','王静雨','侯采钰','何雪梅','廖清燕','饶潇枭','黄檬玥','刘星','柳梦婷','付俊瑛','武剑峰','姜双','沈天佑'];
+let currentPlanner='';
+let pendingPlannerPopup='';
 const SK_USER='q4_supply_user';
 const SK_REMEMBER='q4_supply_remember';
 const SK_SEEDED='q4_sb_seeded_v1';
 
+function fillLoginPlanners(restrictUser){
+  var s=document.getElementById('loginPlanner');
+  if(!s) return;
+  var u=(restrictUser||'').toString().toUpperCase();
+  var acc=USERS[u];
+  if(acc && acc.pick==='planner'){
+    s.innerHTML='<option value="">请选择人员</option><optgroup label="计划人员">'+PLANNERS.slice().sort().map(function(p){return '<option value="'+p+'">'+p+'</option>';}).join('')+'</optgroup>';
+  }else if(acc && acc.pick==='运营'){
+    s.innerHTML='<option value="运营">运营</option>';
+  }else if(acc && acc.pick==='仅浏览'){
+    s.innerHTML='<option value="仅浏览">仅浏览</option>';
+  }else{
+    s.innerHTML='<option value="">请选择人员</option><optgroup label="运营角色"><option value="运营">运营</option></optgroup><optgroup label="其他部门"><option value="仅浏览">仅浏览</option></optgroup><optgroup label="计划人员">'+PLANNERS.slice().sort().map(function(p){return '<option value="'+p+'">'+p+'</option>';}).join('')+'</optgroup>';
+  }
+}
 function checkAuth(){
+  fillLoginPlanners();
   // 检查是否有记住的账号密码
   const saved=localStorage.getItem(SK_REMEMBER);
   if(saved){
@@ -394,6 +472,7 @@ function checkAuth(){
       document.getElementById('loginUser').value=user;
       document.getElementById('loginPass').value=pass;
       document.getElementById('loginRemember').checked=true;
+      fillLoginPlanners(user);
     }catch(e){}
   }
   // 检查是否已登录（sessionStorage 保持当前会话）
@@ -404,6 +483,8 @@ function checkAuth(){
       userRole = USERS[savedUser].role;
       userName = savedUser;
     }
+    var savedPlanner = sessionStorage.getItem(SK_PLANNER);
+    if(savedPlanner) currentPlanner = savedPlanner;
     document.getElementById('loginOverlay').style.display='none';
     document.getElementById('appContent').style.display='';
     applyUserRole();
@@ -414,13 +495,32 @@ function doLogin(){
   var u=document.getElementById('loginUser').value.trim().toUpperCase();
   var p=document.getElementById('loginPass').value;
   var remember=document.getElementById('loginRemember').checked;
+  var planner=document.getElementById('loginPlanner').value;
+  if(!planner){
+    document.getElementById('loginErr').textContent='请先选择人员';
+    return;
+  }
   var user = USERS[u];
+  if(user && user.pick==='planner'){
+    if(PLANNERS.indexOf(planner)<0){
+      document.getElementById('loginErr').textContent=u+' 账号仅可选择计划人员登录';
+      return;
+    }
+  }else if(user && user.pick){
+    if(planner!==user.pick){
+      document.getElementById('loginErr').textContent=u+' 账号仅可登录「'+user.pick+'」角色';
+      return;
+    }
+  }
   if(user && user.pass===p){
     currentUser = u;
     userRole = user.role;
     userName = u;
+    currentPlanner = planner;
+    pendingPlannerPopup = planner;
     sessionStorage.setItem(SK_AUTH,'1');
     sessionStorage.setItem(SK_USER, u);
+    sessionStorage.setItem(SK_PLANNER, planner);
     // 记住账号密码
     if(remember){
       localStorage.setItem(SK_REMEMBER,JSON.stringify({user:u,pass:p}));
@@ -440,26 +540,49 @@ function applyUserRole(){
   // 更新用户显示
   var userDisplay = document.getElementById('userName');
   if(userDisplay && currentUser){
-    var roleLabel = userRole==='admin'?'(管理员)':userRole==='operator'?'(运销)':'';
-    userDisplay.textContent = currentUser + ' ' + roleLabel;
+    var roleLabel = currentPlanner==='运营'?'(运营)':(currentPlanner==='仅浏览'?'(仅浏览)':(userRole==='admin'?'(管理员)':userRole==='operator'?'(运销)':''));
+    userDisplay.textContent = currentUser + ' ' + roleLabel + (currentPlanner && currentPlanner!=='运营' && currentPlanner!=='仅浏览'?' · '+currentPlanner:'');
   }
   if(userRole==='admin'){
-    // 隐藏导入按钮
-    var impBtn = document.querySelector('.btn-imp');
-    var dlBtn = document.querySelector('.btn-dl');
-    if(impBtn) impBtn.style.display='none';
-    if(dlBtn) dlBtn.style.display='none';
-    // 更新header sub显示角色
     var sub = document.querySelector('.header-sub');
-    if(sub) sub.textContent = '只读模式 · 仅可浏览数据，无法编辑';
+    if(sub) sub.textContent = '管理员 · 仅可编辑本人负责的产品';
   }
 }
 function doLogout(){
   sessionStorage.removeItem(SK_AUTH);
   sessionStorage.removeItem(SK_USER);
+  sessionStorage.removeItem(SK_PLANNER);
   currentUser = null;
+  currentPlanner = '';
   userRole = 'viewer';
   location.reload();
+}
+function maybeShowPlannerPopup(){
+  if(!pendingPlannerPopup) return;
+  var planner = pendingPlannerPopup;
+  pendingPlannerPopup = '';
+  var list = allData.filter(function(r){return r.planner===planner && r.turnText;});
+  if(!list.length) return;
+  var html = '<div style="margin-bottom:10px">计划人员：<b>'+escHtml(planner)+'</b>，有 <b style="color:#c2410c">'+list.length+'</b> 个品种存在周转变化：</div>';
+  list.slice(0,50).forEach(function(r){
+    html += '<div class="pp-item"><div class="pp-name" title="'+escHtml(r.name)+'">'+escHtml(r.name)+'</div><div class="pp-turn">'+escHtml(r.turnText)+'</div></div>';
+  });
+  if(list.length>50){
+    html += '<div style="color:#999;font-size:12px;text-align:center;padding:6px">仅展示前 50 条，共 '+list.length+' 条</div>';
+  }
+  document.getElementById('plannerPopupBody').innerHTML = html;
+  document.getElementById('plannerPopup').classList.add('active');
+}
+function closePlannerPopup(){
+  document.getElementById('plannerPopup').classList.remove('active');
+}
+function plannerGoDetail(){
+  closePlannerPopup();
+  var fp = document.getElementById('fPlanner');
+  if(fp && currentPlanner) fp.value = currentPlanner;
+  var ft = document.getElementById('fTurn');
+  if(ft) ft.value = 'has';
+  applyFilters();
 }
 document.addEventListener('keydown',function(e){
   if(e.key==='Enter'&&document.getElementById('loginOverlay').style.display!=='none'){
@@ -549,12 +672,12 @@ async function loadFromSupabase(){
           production:ed?Number(ed.production)||0:0,
           capacitySatisfied:ed?(ed.capacity_satisfied||''):'',
           planDate:ed?(ed.plan_date||''):'',
-          salesDemand:ed?Number(ed.sales_demand)||0:0,
           opsDemand:ed?Number(ed.ops_demand)||0:0,
           remark:ed?(ed.remark||''):(r.remark||''),
           editedBy:ed?(ed.edited_by||''):(r.edited_by||''),
           // —— 活动 6 字段（运营推送只读 + 采销反馈）——
           curActs:   ao.act_names || '',                                    // 当前活动
+          curTypes:  ao.act_types || '',                                    // 活动类型
           turnText:  ao.turn_text || '',                                    // 品种周转变化
           keyAct:    ap.key_act   || ao.key_act || '',                      // 重点活动
           actPlan:   ap.act_plan  || ao.act_plan || '',                     // 本月活动计划
@@ -569,6 +692,7 @@ async function loadFromSupabase(){
       applyFilters();
       updateStockTimeDisplay();
       updateSyncStatus('online');
+      maybeShowPlannerPopup();
     }
   }catch(e){
     console.error('Supabase load error:',e);
@@ -585,7 +709,7 @@ function useFallbackData(){
       const ed=JSON.parse(saved);
       allData=RAW.map(r=>{
         const e=ed.find(x=>x.erpId===r.erpId&&x.dept===r.dept);
-        return e?{...r,stock:e.stock||0,outStock:e.outStock||0,production:e.production||0,capacitySatisfied:e.capacitySatisfied||'',planDate:e.planDate||'',salesDemand:e.salesDemand||0,opsDemand:e.opsDemand||0,remark:e.remark||'',editedBy:e.editedBy||''}:r;
+        return e?{...r,stock:e.stock||0,outStock:e.outStock||0,production:e.production||0,capacitySatisfied:e.capacitySatisfied||'',planDate:e.planDate||'',opsDemand:e.opsDemand||0,remark:e.remark||'',editedBy:e.editedBy||''}:r;
       });
     }catch(e){allData=[...RAW]}
   }else{allData=[...RAW]}
@@ -594,6 +718,7 @@ function useFallbackData(){
   applyFilters();
   updateStockTimeDisplay();
   updateSyncStatus('offline');
+  maybeShowPlannerPopup();
 }
 
 // ===== 播种数据到 Supabase =====
@@ -673,12 +798,12 @@ async function getEditsColumns(){
       const m=error.hint.match(/column[s]? (\S+)/);
       if(m){
         const missing=m[1].replace(/'/g,'');
-        _editsColumns=['erp_id','dept','out_stock','production','stock','capacity_satisfied','plan_date','sales_demand','ops_demand','remark','edited_by','updated_at'];
+        _editsColumns=['erp_id','dept','out_stock','production','stock','capacity_satisfied','plan_date','ops_demand','remark','edited_by','updated_at'];
         return _editsColumns;
       }
     }
   }catch(e){}
-  _editsColumns=['erp_id','dept','out_stock','production','stock','capacity_satisfied','plan_date','sales_demand','ops_demand','remark','edited_by','updated_at'];
+  _editsColumns=['erp_id','dept','out_stock','production','stock','capacity_satisfied','plan_date','ops_demand','remark','edited_by','updated_at'];
   return _editsColumns;
 }
 function saveToSupabase(row){
@@ -697,7 +822,7 @@ function saveToSupabase(row){
         stock:row.stock||0,
         capacity_satisfied:row.capacitySatisfied||'',
         plan_date:row.planDate||'',
-        sales_demand:row.salesDemand||0,ops_demand:row.opsDemand||0,
+        ops_demand:row.opsDemand||0,
         remark:row.remark||'',edited_by:row.editedBy||'',
         updated_at:new Date().toISOString()
       };
@@ -717,7 +842,7 @@ function saveToLocal(){
     localStorage.setItem('q4_supply_data_v5',JSON.stringify(allData.map(r=>({
       erpId:r.erpId,dept:r.dept,stock:r.stock,stockUpdatedAt:r.stockUpdatedAt,outStock:r.outStock,
       production:r.production,capacitySatisfied:r.capacitySatisfied,planDate:r.planDate,
-      salesDemand:r.salesDemand||0,opsDemand:r.opsDemand||0,remark:r.remark,editedBy:r.editedBy
+      opsDemand:r.opsDemand||0,remark:r.remark,editedBy:r.editedBy
     }))));
   }catch(e){}
 }
@@ -741,7 +866,7 @@ function updateSyncStatus(status){
 }
 
 // ===== 计算函数 =====
-function calcTotal(r){return(r.stock||0)+(r.outStock||0)+(r.production||0)+(r.salesDemand||0)+(r.opsDemand||0)}
+function calcTotal(r){return(r.stock||0)+(r.outStock||0)+(r.production||0)+(r.opsDemand||0)}
 function calcCov(r){const t=calcTotal(r);return r.q4Sales>0?(t/r.q4Sales*100):0}
 function calcCov2(r){const t=calcTotal(r);const s=(r.q4Sales||0)+(r.q1_26Sales||0);return s>0?(t/s*100):0}
 function calcDiff(r){return calcTotal(r)-r.q4Sales}
@@ -766,7 +891,7 @@ function updateStats(){
 
 function populateFilters(){
   const depts=[...new Set(allData.map(r=>r.dept))].sort();
-  const planners=[...new Set(allData.map(r=>r.planner))].sort().filter(Boolean);
+  const planners=[...new Set(allData.map(r=>r.planner))].sort().filter(Boolean).filter(function(p){return p!=='李四';});
   const buyers=[...new Set(allData.map(r=>r.buyer))].sort().filter(Boolean);
   fillSel('fDept',depts);
   fillSel('fPlanner',planners);
@@ -790,7 +915,11 @@ function applyFilters(){
   const state=document.getElementById('fState').value;
   const biz=document.getElementById('fBiz').value;
   const cap=document.getElementById('fCapacity')?document.getElementById('fCapacity').value:'';
-  console.log('[Filter]',{q,dept,planner,buyer,mfr,covMin,covMax,state,biz,cap,allDataLen:allData.length});
+  const actFb=document.getElementById('fActFb')?document.getElementById('fActFb').value:'';
+  const actStatus=document.getElementById('fActStatus')?document.getElementById('fActStatus').value:'';
+  const turn=document.getElementById('fTurn')?document.getElementById('fTurn').value:'';
+  const curAct=document.getElementById('fCurAct')?document.getElementById('fCurAct').value:'';
+  console.log('[Filter]',{q,dept,planner,buyer,mfr,covMin,covMax,state,biz,cap,actFb,actStatus,turn,allDataLen:allData.length});
   try{
   filtered=allData.filter(r=>{
     const nm=(r.name||'').toLowerCase();
@@ -808,6 +937,22 @@ function applyFilters(){
       if(state==='noSales'&&r.q4Sales>0)return false;
     }
     if(biz&&r.status!==biz)return false;
+    if(actFb==='能做'&&r.actFb!=='能做')return false;
+    if(actFb==='待定'&&r.actFb!=='待定')return false;
+    if(actFb==='不能做'&&r.actFb!=='不能做')return false;
+    if(actFb==='待计划填写'&&(r.actFb==='能做'||r.actFb==='待定'||r.actFb==='不能做'))return false;
+    if(actStatus==='key'&&!r.keyAct)return false;
+    if(actStatus==='cur'&&!r.curActs)return false;
+    if(actStatus==='plan'&&!r.actPlan)return false;
+    if(turn==='has'&&!r.turnText)return false;
+    if(curAct){
+      const ca=r.curActs||'';
+      if(curAct==='秒杀'&&ca.indexOf('秒杀')<0)return false;
+      if(curAct==='满减满赠'&&!(ca.indexOf('满')>=0||ca.indexOf('赠')>=0||ca.indexOf('换购')>=0))return false;
+      if(curAct==='捡漏专区'&&ca.indexOf('捡漏')<0)return false;
+      if(curAct==='大型专区'&&(ca.indexOf('专区')<0||ca.indexOf('捡漏')>=0))return false;
+      if(curAct==='特价专区'&&(r.curActs||'').indexOf('特价')<0)return false;
+    }
     if(cap==='是'&&r.capacitySatisfied!=='是')return false;
     if(cap==='否'&&r.capacitySatisfied!=='否')return false;
     if(cap==='empty'&&(r.capacitySatisfied==='是'||r.capacitySatisfied==='否'))return false;
@@ -864,7 +1009,7 @@ function applyFilters(){
   render();
 }
 function resetFilters(){
-  ['searchInput','fDept','fPlanner','fBuyer','fMfr','fCovMin','fCovMax','fState','fCapacity','fBiz'].forEach(id=>{document.getElementById(id).value=''});
+  ['searchInput','fDept','fPlanner','fBuyer','fMfr','fCovMin','fCovMax','fState','fCapacity','fBiz','fActFb','fActStatus','fCurAct','fTurn'].forEach(id=>{document.getElementById(id).value=''});
   filtered=[...allData];cp=1;updateStats();render();
 }
 function filterRisk(){
@@ -890,12 +1035,14 @@ function render(){
     const isReadonly = userRole==='viewer';
     const isAdmin = userRole==='admin';
     const isGtUser = userName==='YYYGT';
-    // 权限控制：普通字段仅admin可编辑，viewer只读，YYYGT只填销售/运营需求
-    const canEdit = isAdmin;
+    const isOps = currentPlanner==='运营';
+    // 权限控制：管理员仅可编辑本人负责的产品；viewer只读；YYYGT只填运营需求
+    const isMine = currentPlanner && r.planner===currentPlanner;
+    const canEdit = isAdmin && isMine;
     const editAttr = canEdit ? ' contenteditable="true"' : '';
     const editClass = canEdit ? ' editable' : '';
     const selDisabled = canEdit ? '' : ' disabled';
-    const canActFb = isAdmin;   // 「能否做活动」仅管理员(admin)可填；如需运销(YYYGT)也可填，改成 = !isReadonly
+    const canActFb = isAdmin && isMine;   // 「能否做活动」仅管理员可填本人负责的产品
     // 沟通处颜色：YYYCKZ黑字，YYYGT红字
     const remarkColor = r.editedBy==='YYYGT' ? 'color:#dc2626' : (r.remark?'color:#000':'');
     return '<tr class="'+(risk?'risk':'')+'">'
@@ -921,8 +1068,7 @@ function render(){
       +'<td class="n">'+((r.q4Sales||0)+(r.q1_26Sales||0)).toLocaleString()+'</td>'
       +'<td class="n">'+(noSales2?'<span style="color:#999;font-size:12px">无销售数据</span>':'<span class="cov '+covClass(c2)+'">'+c2.toFixed(1)+'%</span>')+'</td>'
       +'<td class="'+editClass+'"'+editAttr+' data-i="'+idx+'" data-f="remark" style="min-width:100px'+(remarkColor?';'+remarkColor:'')+'">'+escHtml(r.remark||'')+'</td>'
-      +'<td class="n'+(isGtUser?' editable':'')+'"'+(isGtUser?' contenteditable="true"':'')+' data-i="'+idx+'" data-f="salesDemand">'+(r.salesDemand||0).toLocaleString()+'</td>'
-      +'<td class="n'+(isGtUser?' editable':'')+'"'+(isGtUser?' contenteditable="true"':'')+' data-i="'+idx+'" data-f="opsDemand">'+(r.opsDemand||0).toLocaleString()+'</td>'
+      +'<td class="n'+((isGtUser||isOps)?' editable':'')+'"'+((isGtUser||isOps)?' contenteditable="true"':'')+' data-i="'+idx+'" data-f="opsDemand">'+(r.opsDemand||0).toLocaleString()+'</td>'
       +'<td class="c"><select class="cell-sel" data-i="'+idx+'" data-f="capacitySatisfied" onchange="updSel(this)"'+selDisabled+'><option value=""'+(!r.capacitySatisfied?' selected':'')+'>-</option><option'+(r.capacitySatisfied==='是'?' selected':'')+'>是</option><option'+(r.capacitySatisfied==='否'?' selected':'')+'>否</option></select></td>'
       +'<td class="c"><input type="date" class="cell-date" data-i="'+idx+'" data-f="planDate" value="'+(r.planDate||'')+'" onchange="updDate(this)"'+(canEdit?'':' disabled')+' style="font-family:inherit;width:130px;border:1px solid #d1d5db;border-radius:4px;padding:2px 4px"></td>'
       +'</tr>';
@@ -984,14 +1130,14 @@ function updSel(el){
 }
 // ===== 活动 6 字段渲染（前5列只读：运营每日推送 sku_activity，按ERP ID匹配；第6列采销可填） =====
 function actTurnTd(r){
-  if(!r.turnText) return '<td class="n"></td>';
-  var alarm = r.turnText.indexOf('提醒')>=0;
-  return '<td class="n">'+(alarm?'<span style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:1px 6px;font-size:12px;color:#c2410c" title="'+escHtml(r.turnText)+'">🔔'+escHtml(r.turnText.split('(提醒')[0])+'</span>':'<span style="color:#555">'+escHtml(r.turnText)+'</span>')+'</td>';
+  if(!r.turnText) return '<td class="c"></td>';
+  var t = r.turnText.split('(提醒')[0];
+  return '<td class="c"><span style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:1px 7px;font-size:12px;color:#c2410c;white-space:nowrap" title="'+escHtml(r.turnText)+'">🔔'+escHtml(t)+'</span></td>';
 }
 function actCurTag(r){
   if(!r.curActs) return '';
   return r.curActs.split('、').map(function(a){
-    return '<span style="display:inline-block;margin-left:6px;padding:1px 8px;border-radius:10px;font-size:11px;line-height:17px;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8">'+escHtml(a)+'</span>';
+    return '<span title="'+escHtml(a)+'" style="display:inline-block;margin-left:6px;padding:1px 8px;border-radius:10px;font-size:11px;line-height:17px;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;white-space:nowrap">'+escHtml(a)+'</span>';
   }).join('');
 }
 function actKeyTag(r){
@@ -1041,6 +1187,38 @@ document.getElementById('tbody').addEventListener('blur',function(e){if(e.target
 
 
 
+function csvCell(v){
+  v=(v===null||v===undefined)?'':String(v);
+  if(/[",\n\r]/.test(v))v='"'+v.replace(/"/g,'""')+'"';
+  return v;
+}
+function exportMine(){
+  if(!currentPlanner){ toast('未选择计划人员'); return; }
+  var list = allData.filter(function(r){ return r.planner===currentPlanner; });
+  if(!list.length){ toast('没有找到「'+currentPlanner+'」负责的产品数据'); return; }
+  var cols=['ERP编号','部门','品种名称','规格','厂家','采销','计划人员','在库','在外','在产','总库存','品种周转变化','本月活动计划','活动规划','能否做活动','Q4销量','差额','Q4覆盖率%','Q4+Q1销量','含Q1覆盖率%','运营侧需求','是否满足产能','计划日期','备注'];
+  var rows=list.map(function(r){
+    return [
+      r.erpId, r.dept, r.name, r.spec, r.manufacturer, r.buyer, r.planner,
+      r.stock||0, r.outStock||0, r.production||0,
+      calcTotal(r), r.turnText||'', r.actPlan||'', (r.actRoad||'').split('|').join(' · '),
+      r.actFb||'', r.q4Sales||0, calcDiff(r), calcCov(r).toFixed(1),
+      (r.q4Sales||0)+(r.q1_26Sales||0), calcCov2(r).toFixed(1),
+      r.opsDemand||0, r.capacitySatisfied||'', r.planDate||'', r.remark||''
+    ];
+  });
+  var csv='\ufeff'+[cols].concat(rows).map(function(row){return row.map(csvCell).join(',');}).join('\r\n');
+  var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;
+  var d=new Date();
+  var ts=d.getFullYear()+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2);
+  a.download='我的数据_'+currentPlanner+'_'+ts+'.csv';
+  document.body.appendChild(a);a.click();
+  document.body.removeChild(a);URL.revokeObjectURL(url);
+  toast('已导出 '+list.length+' 条数据');
+}
 function downloadTemplate(){
   const b64='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';
   const bin=atob(b64);
@@ -1096,7 +1274,6 @@ function processImportData(rows){
   const iDept=findCol('部门','dept');
   const iOut=findCol('在外库存','outstock','在外');
   const iProd=findCol('在产计划','production','在产');
-  const iSales=findCol('销售侧需求','salesdemand','销售需求');
   const iOps=findCol('运营侧需求','opsdemand','运营需求');
   if(iErp<0){toast('未找到ERP ID列，请检查文件格式');return;}
   if(iOut<0&&iProd<0){toast('未找到"在外库存"或"在产计划"列，请检查文件格式');return;}
@@ -1110,12 +1287,11 @@ function processImportData(rows){
     let r=allData.find(x=>x.erpId===erp&&dept&&x.dept===dept);
     if(!r&&erp)r=allData.find(x=>x.erpId===erp);
     if(r){
-      // 导入只允许覆盖下面 4 个字段（在外/在产/销售需求/运营需求）。
+      // 导入只允许覆盖下面 3 个字段（在外/在产/运营需求）。
       //    活动 6 字段（curActs/turnText/keyAct/actPlan/actRoad 运营推送只读；
       //    actFb/actFbNote/actFbAt 采销反馈）严禁在此赋值 —— 保证导入永不影响活动列。
       if(iOut>=0)r.outStock=parseInt(cols[iOut])||0;
       if(iProd>=0)r.production=parseInt(cols[iProd])||0;
-      if(iSales>=0)r.salesDemand=parseInt(cols[iSales])||0;
       if(iOps>=0)r.opsDemand=parseInt(cols[iOps])||0;
       toSave.push(r);
       cnt++;
@@ -1145,7 +1321,7 @@ async function batchSaveToSupabase(rows){
           stock:row.stock||0,
           capacity_satisfied:row.capacitySatisfied||'',
           plan_date:row.planDate||'',
-          sales_demand:row.salesDemand||0,ops_demand:row.opsDemand||0,
+          ops_demand:row.opsDemand||0,
           remark:row.remark||'',edited_by:row.editedBy||'',
           updated_at:new Date().toISOString()
         };
