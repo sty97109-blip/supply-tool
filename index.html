@@ -252,7 +252,7 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
     <div class="header-icon">📋</div>
     <div>
       <div class="header-title">四季度供应覆盖管理工具</div>
-      <div class="header-sub">2025年9—12月同期销量 · 部门级 SKU 供应覆盖</div>
+      <div class="header-sub">2025年10—12月同期销量 · 部门级 SKU 供应覆盖</div>
     </div>
   </div>
   <div class="header-actions">
@@ -362,7 +362,7 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
         <div id="stockUpdateTime" style="font-size:13px;color:#999;margin-top:4px">在库库存更新时间：-</div>
       </div>
       <div class="tbl-meta">
-        <span style="color:#dc2626;font-weight:600">⚠️ 备货请注意25年同期销量未估算断货损失销量！</span>
+        <span style="color:#dc2626;font-weight:600">⚠️ 备货请注意25年10-12月同期销量未估算断货损失销量！</span>
         <span><span class="mdot mdot-o"></span>可修改字段</span>
         <span><span class="mdot mdot-r"></span>风险SKU</span>
         <span id="totalCount">共 0 条</span>
@@ -387,11 +387,11 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
           <th style="width:120px;min-width:120px">本月活动计划</th>
           <th style="width:150px;min-width:150px">活动规划</th>
           <th class="c" style="width:110px;min-width:110px">能否做活动</th>
-          <th class="n">25年同期销量</th>
+          <th class="n">25年10-12月同期销量</th>
           <th class="n th-sort" onclick="toggleSort('diff')">差额<span id="si-diff" class="si">⇅</span></th>
-          <th class="n th-sort" onclick="toggleSort('cov')">覆盖比例<span id="si-cov" class="si">⇅</span></th>
-          <th class="n">9月-3月同期销量</th>
-          <th class="n th-sort" onclick="toggleSort('cov2')">9月-3月覆盖比例<span id="si-cov2" class="si">⇅</span></th>
+          <th class="n th-sort" onclick="toggleSort('cov')">10-12月覆盖比例<span id="si-cov" class="si">⇅</span></th>
+          <th class="n">10-3月同期销量</th>
+          <th class="n th-sort" onclick="toggleSort('cov2')">10-3月覆盖比例<span id="si-cov2" class="si">⇅</span></th>
           <th>沟通处</th>
           <th class="n">运营侧需求</th>
           <th class="c">产能是否满足</th>
@@ -1196,7 +1196,7 @@ function exportMine(){
   if(!currentPlanner){ toast('未选择计划人员'); return; }
   var list = allData.filter(function(r){ return r.planner===currentPlanner; });
   if(!list.length){ toast('没有找到「'+currentPlanner+'」负责的产品数据'); return; }
-  var cols=['ERP编号','部门','品种名称','规格','厂家','采销','计划人员','在库','在外','在产','总库存','品种周转变化','本月活动计划','活动规划','能否做活动','Q4销量','差额','Q4覆盖率%','Q4+Q1销量','含Q1覆盖率%','运营侧需求','是否满足产能','计划日期','备注'];
+  var cols=['ERP编号','部门','品种名称','规格','厂家','采销','计划人员','在库','在外','在产','总库存','品种周转变化','本月活动计划','活动规划','能否做活动','10-12月销量','差额','10-12月覆盖率%','10-3月销量','10-3月覆盖率%','运营侧需求','是否满足产能','计划日期','备注'];
   var rows=list.map(function(r){
     return [
       r.erpId, r.dept, r.name, r.spec, r.manufacturer, r.buyer, r.planner,
@@ -1417,22 +1417,22 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.cla
 <div class="def-overlay" id="defModal" onclick="if(event.target===this)closeDef()">
   <div class="def-content">
     <button class="def-close" onclick="closeDef()">×</button>
-    <p style="color:#666;font-size:13px;margin-bottom:16px">以下以 SPX00001582（HISEWAY芦荟胶囊）为例说明各字段口径。该SKU总库存1,889盒，25年同期销量10,789盒，9月-3月同期销量19,983盒。</p>
+    <p style="color:#666;font-size:13px;margin-bottom:16px">以下以 SPZB0004016（MCKIN益生菌粉）为例说明各字段口径。该SKU总库存2,020盒，25年10-12月同期销量24,017盒，10-3月同期销量62,429盒。</p>
 
-    <h3>覆盖比例</h3>
-    <p>总库存 ÷ 25年同期销量 × 100%，反映当前库存能覆盖去年同期销量的程度。</p>
-    <div class="ex"><strong>例：</strong>1,889 ÷ 10,789 = <strong>17.5%</strong>，总库存仅覆盖了去年同期销量的17.5%</div>
+    <h3>10-12月覆盖比例</h3>
+    <p>总库存 ÷ 25年10-12月同期销量 × 100%，反映当前库存能覆盖去年同期销量的程度。</p>
+    <div class="ex"><strong>例：</strong>2,020 ÷ 24,017 = <strong>8.4%</strong>，总库存仅覆盖了去年同期销量的8.4%</div>
 
     <h3>差额</h3>
-    <p>总库存 − 25年同期销量。正值表示库存富余，负值表示库存缺口。</p>
-    <div class="ex"><strong>例：</strong>1,889 − 10,789 = <strong>−8,900</strong>，距去年同期销量有8,900盒的库存缺口</div>
+    <p>总库存 − 25年10-12月同期销量。正值表示库存富余，负值表示库存缺口。</p>
+    <div class="ex"><strong>例：</strong>2,020 − 24,017 = <strong>−21,997</strong>，距去年同期销量有21,997盒的库存缺口</div>
 
-    <h3>9月-3月同期销量</h3>
-    <p>2025年9月至2026年3月的历史总销量（含25年9-12月 + 26年1-3月），用于跨年度参考。</p>
+    <h3>10-3月同期销量</h3>
+    <p>2025年10月至2026年3月的历史总销量（含25年10-12月 + 26年1-3月），用于跨年度参考。</p>
 
-    <h3>9月-3月覆盖比例</h3>
-    <p>总库存 ÷ 9月-3月同期销量 × 100%，反映库存覆盖跨年度销售周期的程度。</p>
-    <div class="ex"><strong>例：</strong>1,889 ÷ 19,983 = <strong>9.5%</strong>，总库存仅覆盖了9月-3月同期销量的9.5%</div>
+    <h3>10-3月覆盖比例</h3>
+    <p>总库存 ÷ 10-3月同期销量 × 100%，反映库存覆盖跨年度销售周期的程度。</p>
+    <div class="ex"><strong>例：</strong>2,020 ÷ 62,429 = <strong>3.2%</strong>，总库存仅覆盖了10-3月同期销量的3.2%</div>
 
     <h3>是否增补计划</h3>
     <p>覆盖比例低于90%时，需选择是否补计划。<strong>不补计划需在备注中说明原因。</strong></p>
