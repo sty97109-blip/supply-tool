@@ -384,14 +384,14 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
           <th class="n">在产计划</th>
           <th class="n">总库存</th>
           <th class="c" style="width:150px;min-width:150px">品种周转变化</th>
-          <th style="width:120px;min-width:120px">本月活动计划</th>
-          <th style="width:150px;min-width:150px">活动规划</th>
-          <th class="c" style="width:110px;min-width:110px">能否做活动</th>
           <th class="n">25年10-12月同期销量</th>
           <th class="n th-sort" onclick="toggleSort('diff')">差额<span id="si-diff" class="si">⇅</span></th>
           <th class="n th-sort" onclick="toggleSort('cov')">10-12月覆盖比例<span id="si-cov" class="si">⇅</span></th>
           <th class="n">10-3月同期销量</th>
           <th class="n th-sort" onclick="toggleSort('cov2')">10-3月覆盖比例<span id="si-cov2" class="si">⇅</span></th>
+          <th style="width:120px;min-width:120px">本月活动计划</th>
+          <th style="width:150px;min-width:150px">活动规划</th>
+          <th class="c" style="width:110px;min-width:110px">能否做活动</th>
           <th>沟通处</th>
           <th class="n">运营侧需求</th>
           <th class="c">产能是否满足</th>
@@ -651,6 +651,32 @@ async function loadFromSupabase(){
           (a.kind === 'planned' ? actMapP : actMapO)[a.erp_id] = a;
         });
       } catch (e) { console.warn('sku_activity 拉取失败（不影响其他功能）', e); }
+      var _t=new Date();
+      var TODAY_STR=_t.getFullYear()+'-'+String(_t.getMonth()+1).padStart(2,'0')+'-'+String(_t.getDate()).padStart(2,'0');
+      function _activeSegments(names, actEnd){
+        if(!names) return '';
+        var parts = String(names).split('、');
+        var out = [];
+        for (var i=0;i<parts.length;i++){
+          var seg = parts[i].trim();
+          if(!seg) continue;
+          var m = seg.match(/^(\d{1,2})\.(\d{1,2})-(\d{1,2})\.(\d{1,2})/);
+          if(!m){ out.push(seg); continue; }
+          var em = parseInt(m[3],10), ed = parseInt(m[4],10);
+          var y = _t.getFullYear();
+          if (actEnd){
+            var ae = String(actEnd).split('-');
+            if (ae.length >= 2){
+              var aey = parseInt(ae[0],10), aem = parseInt(ae[1],10);
+              if (aey) y = aey;
+              if (em > aem) y--;
+            }
+          }
+          var endStr = y + '-' + String(em).padStart(2,'0') + '-' + String(ed).padStart(2,'0');
+          if (endStr >= TODAY_STR) out.push(seg);
+        }
+        return out.join('、');
+      }
       allData=baseData.map(r=>{
         const key=r.erp_id+'||'+r.dept;
         const ed=editsMap[key];
@@ -676,7 +702,7 @@ async function loadFromSupabase(){
           remark:ed?(ed.remark||''):(r.remark||''),
           editedBy:ed?(ed.edited_by||''):(r.edited_by||''),
           // —— 活动 6 字段（运营推送只读 + 采销反馈）——
-          curActs:   ao.act_names || '',                                    // 当前活动
+          curActs:   (ao.act_names && ao.act_end && ao.act_end < TODAY_STR) ? '' : _activeSegments(ao.act_names, ao.act_end),  // 当前活动（整条+段级过期过滤）
           curTypes:  ao.act_types || '',                                    // 活动类型
           turnText:  ao.turn_text || '',                                    // 品种周转变化
           keyAct:    ap.key_act   || ao.key_act || '',                      // 重点活动
@@ -1059,14 +1085,14 @@ function render(){
       +'<td class="n'+editClass+'"'+editAttr+' data-i="'+idx+'" data-f="production">'+(r.production||0).toLocaleString()+'</td>'
       +'<td class="n" style="font-weight:600">'+t.toLocaleString()+'</td>'
       +actTurnTd(r)
-      +actPlanTd(r)
-      +actRoadTd(r)
-      +actFbTd(r,idx,canActFb)
       +'<td class="n">'+r.q4Sales.toLocaleString()+'</td>'
       +'<td class="n"><span class="dif '+dc+'">'+(d>0?'+':'')+d.toLocaleString()+'</span></td>'
       +'<td class="n">'+(noSales?'<span style="color:#999;font-size:12px">无销售数据</span>':'<span class="cov '+cc+'">'+c.toFixed(1)+'%</span>')+'</td>'
       +'<td class="n">'+((r.q4Sales||0)+(r.q1_26Sales||0)).toLocaleString()+'</td>'
       +'<td class="n">'+(noSales2?'<span style="color:#999;font-size:12px">无销售数据</span>':'<span class="cov '+covClass(c2)+'">'+c2.toFixed(1)+'%</span>')+'</td>'
+      +actPlanTd(r)
+      +actRoadTd(r)
+      +actFbTd(r,idx,canActFb)
       +'<td class="'+editClass+'"'+editAttr+' data-i="'+idx+'" data-f="remark" style="min-width:100px'+(remarkColor?';'+remarkColor:'')+'">'+escHtml(r.remark||'')+'</td>'
       +'<td class="n'+((isGtUser||isOps)?' editable':'')+'"'+((isGtUser||isOps)?' contenteditable="true"':'')+' data-i="'+idx+'" data-f="opsDemand">'+(r.opsDemand||0).toLocaleString()+'</td>'
       +'<td class="c"><select class="cell-sel" data-i="'+idx+'" data-f="capacitySatisfied" onchange="updSel(this)"'+selDisabled+'><option value=""'+(!r.capacitySatisfied?' selected':'')+'>-</option><option'+(r.capacitySatisfied==='是'?' selected':'')+'>是</option><option'+(r.capacitySatisfied==='否'?' selected':'')+'>否</option></select></td>'
@@ -1196,14 +1222,15 @@ function exportMine(){
   if(!currentPlanner){ toast('未选择计划人员'); return; }
   var list = allData.filter(function(r){ return r.planner===currentPlanner; });
   if(!list.length){ toast('没有找到「'+currentPlanner+'」负责的产品数据'); return; }
-  var cols=['ERP编号','部门','品种名称','规格','厂家','采销','计划人员','在库','在外','在产','总库存','品种周转变化','本月活动计划','活动规划','能否做活动','10-12月销量','差额','10-12月覆盖率%','10-3月销量','10-3月覆盖率%','运营侧需求','是否满足产能','计划日期','备注'];
+  var cols=['ERP编号','部门','品种名称','规格','厂家','采销','计划人员','在库','在外','在产','总库存','品种周转变化','10-12月销量','差额','10-12月覆盖率%','10-3月销量','10-3月覆盖率%','本月活动计划','活动规划','能否做活动','运营侧需求','是否满足产能','计划日期','备注'];
   var rows=list.map(function(r){
     return [
       r.erpId, r.dept, r.name, r.spec, r.manufacturer, r.buyer, r.planner,
       r.stock||0, r.outStock||0, r.production||0,
-      calcTotal(r), r.turnText||'', r.actPlan||'', (r.actRoad||'').split('|').join(' · '),
-      r.actFb||'', r.q4Sales||0, calcDiff(r), calcCov(r).toFixed(1),
+      calcTotal(r), r.turnText||'',
+      r.q4Sales||0, calcDiff(r), calcCov(r).toFixed(1),
       (r.q4Sales||0)+(r.q1_26Sales||0), calcCov2(r).toFixed(1),
+      r.actPlan||'', (r.actRoad||'').split('|').join(' · '), r.actFb||'',
       r.opsDemand||0, r.capacitySatisfied||'', r.planDate||'', r.remark||''
     ];
   });
