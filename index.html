@@ -193,6 +193,49 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
 .th-sort:hover{color:#1a56db}
 .si{font-size:10px;margin-left:2px;display:inline-block;vertical-align:middle}
 .sa{color:#1a56db}
+/* ===== 排版优化：表头排序箭头尺寸 + 筛选栏统一高度 ===== */
+thead th .si{width:auto;height:auto;border-radius:0;font-size:11px;margin-left:3px;display:inline-block;vertical-align:middle;color:#999;line-height:1}
+.filter-bar{gap:12px;padding:16px 20px}
+.search-box{min-width:240px}
+.search-box input{height:36px;padding-left:38px}
+.fsel{height:36px;padding:0 32px 0 12px;line-height:36px;border-radius:8px}
+.fsel:hover{border-color:#bbb}
+input.fsel{height:36px;padding:0 12px;background:#fff;cursor:text;max-width:190px}
+.cov-range{display:inline-flex;align-items:center;height:36px;border:1px solid #ddd;border-radius:8px;background:#fff;overflow:hidden;flex-shrink:0}
+.cov-range:hover{border-color:#bbb}
+.cov-range:focus-within{border-color:#1a8a6e;box-shadow:0 0 0 3px rgba(26,138,110,.08)}
+.cov-range input{height:100%;border:none;outline:none;background:transparent;text-align:center;font-size:13px;padding:0 6px;width:64px}
+.cov-range input::-webkit-outer-spin-button,.cov-range input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.cov-range .sep{color:#999;font-size:12px;user-select:none}
+.fbtn{height:36px;width:36px}
+/* ===== 筛选栏布局：搜索框+重置占首行，下拉等宽均分 ===== */
+.search-box{flex:1 1 calc(100% - 56px);min-width:200px}
+.fbtn{flex:0 0 36px}
+.fsel{flex:1 1 150px;min-width:150px;max-width:none;width:auto}
+input.fsel{flex:1 1 150px;min-width:150px;max-width:none}
+.cov-range{flex:1 1 150px;min-width:150px;max-width:none;flex-shrink:1}
+/* ===== 筛选栏 grid 重排：最后一行不再被拉宽，每行均分整齐 ===== */
+.filter-bar{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;align-items:center;padding:16px 20px}
+.filter-head{grid-column:1/-1;display:flex;gap:10px;align-items:center}
+.search-box{flex:1;min-width:0}
+.fbtn{flex:0 0 36px}
+.fsel{width:100%;min-width:0;max-width:none}
+input.fsel{width:100%;min-width:0;max-width:none}
+.cov-range{width:100%;min-width:0;max-width:none;flex-shrink:1}
+/* ===== 筛选栏：11 个控件单行，部门/计划人员缩短 ===== */
+.filter-bar{display:flex;flex-direction:column;gap:10px;align-items:stretch}
+.filter-head{display:flex;gap:10px;align-items:center;width:100%}
+.search-box{flex:1;min-width:0}
+.fbtn{flex:0 0 36px}
+.filter-row{display:flex;gap:8px;align-items:center;width:100%}
+.filter-row .fsel{flex:1 1 0;min-width:0;width:auto}
+.filter-row .cov-range{flex:1 1 0;min-width:0;width:auto}
+.filter-row #fDept{flex:0 0 76px;min-width:76px}
+.filter-row #fPlanner{flex:0 0 104px;min-width:104px}
+.filter-row #fBuyer{flex:0 0 104px;min-width:104px}
+.filter-row #fMfr{flex:0 0 150px;min-width:150px}
+.cov-range input{flex:1;width:auto;min-width:0}
+
 </style>
 </head>
 <body>
@@ -277,9 +320,9 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
   <div class="stats-row">
     <div class="stat-card">
       <div class="stat-info">
-        <div class="stat-label"><span class="si si-g">📦</span> 当前同期销量覆盖率</div>
-        <div class="stat-val" id="covRate">0%</div>
-        <div class="stat-desc" id="covDesc">加载中...</div>
+        <div class="stat-label"><span class="si si-g">🎯</span> 当前活动品种数</div>
+        <div class="stat-val" id="actCount">0</div>
+        <div class="stat-desc" id="actDesc">加载中...</div>
       </div>
       <div class="ring" id="ringChart"><span id="ringVal">0</span></div>
     </div>
@@ -294,49 +337,49 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
   </div>
 
   <div class="filter-bar">
-    <div class="search-box">
-      <span class="sicon">🔍</span>
-      <input type="text" id="searchInput" placeholder="搜索商品名称 / ERP ID / 规格 / 厂家" oninput="applyFilters()">
+    <div class="filter-head">
+      <div class="search-box">
+        <span class="sicon">🔍</span>
+        <input type="text" id="searchInput" placeholder="搜索商品名称 / ERP ID / 规格 / 厂家" oninput="applyFilters()">
+      </div>
+      <button class="fbtn" onclick="resetFilters()" title="重置筛选">✕</button>
     </div>
-    <select class="fsel" id="fDept" onchange="applyFilters()"><option value="">全部部门</option></select>
-    <select class="fsel" id="fPlanner" onchange="applyFilters()"><option value="">全部计划人员</option></select>
-    <select class="fsel" id="fBuyer" onchange="applyFilters()"><option value="">全部采销人员</option></select>
+    <div class="filter-row">
+      <select class="fsel" id="fDept" onchange="applyFilters()"><option value="">部门</option></select>
+    <select class="fsel" id="fPlanner" onchange="applyFilters()"><option value="">计划人员</option></select>
+    <select class="fsel" id="fBuyer" onchange="applyFilters()"><option value="">采销人员</option></select>
     <input class="fsel" type="text" id="fMfr" placeholder="搜索生产厂家..." oninput="applyFilters()" style="font-family:inherit">
-    <input class="fsel" type="number" id="fCovMin" placeholder="覆盖率≥%" oninput="applyFilters()" style="font-family:inherit;width:100px" min="0" max="999">
-    <span style="color:#6b7280;font-size:13px;line-height:34px">~</span>
-    <input class="fsel" type="number" id="fCovMax" placeholder="覆盖率≤%" oninput="applyFilters()" style="font-family:inherit;width:100px" min="0" max="999">
-    <select class="fsel" id="fState" onchange="applyFilters()">
-      <option value="">全部状态</option>
-      <option value="covered">已完成覆盖</option>
-      <option value="risk">风险 SKU</option>
-      <option value="noSales">无销售数据</option>
-    </select>
+    <span class="cov-range" title="覆盖率区间筛选">
+      <input type="number" id="fCovMin" placeholder="≥%" oninput="applyFilters()" min="0" max="999">
+      <span class="sep">~</span>
+      <input type="number" id="fCovMax" placeholder="≤%" oninput="applyFilters()" min="0" max="999">
+    </span>
     <select class="fsel" id="fCapacity" onchange="applyFilters()">
-      <option value="">全部产能</option>
+      <option value="">产能</option>
       <option value="是">产能满足</option>
       <option value="否">产能不满足</option>
       <option value="empty">未填写</option>
     </select>
     <select class="fsel" id="fBiz" onchange="applyFilters()">
-      <option value="">全部经营状态</option>
+      <option value="">经营状态</option>
       <option value="正常">正常</option>
       <option value="预淘汰">预淘汰</option>
     </select>
     <select class="fsel" id="fActFb" onchange="applyFilters()">
-      <option value="">全部能否做活动</option>
+      <option value="">能否做活动</option>
       <option value="能做">能做</option>
       <option value="待定">待定</option>
       <option value="不能做">不能做</option>
       <option value="待计划填写">待计划填写</option>
     </select>
     <select class="fsel" id="fActStatus" onchange="applyFilters()">
-      <option value="">全部活动情况</option>
+      <option value="">活动情况</option>
       <option value="key">重点活动品种</option>
       <option value="cur">正在活动</option>
       <option value="plan">预备活动</option>
     </select>
     <select class="fsel" id="fCurAct" onchange="applyFilters()">
-      <option value="">全部当前活动</option>
+      <option value="">当前活动</option>
       <option value="秒杀">秒杀</option>
       <option value="满减满赠">满减满赠</option>
       <option value="捡漏专区">捡漏专区</option>
@@ -344,10 +387,10 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
       <option value="特价专区">特价专区</option>
     </select>
     <select class="fsel" id="fTurn" onchange="applyFilters()">
-      <option value="">全部周转变化</option>
-      <option value="has">有周转变化</option>
+      <option value="">周转变化</option>
+      <option value="has">周转下降过快</option>
     </select>
-    <button class="fbtn" onclick="resetFilters()" title="重置筛选">✕</button>
+    </div>
   </div>
 
   <div id="covFilterInfo" style="display:none;background:linear-gradient(135deg,#e0f2fe,#f0f9ff);border-left:4px solid #0284c7;border-radius:8px;padding:12px 18px;margin-bottom:16px;font-size:14px;color:#0c4a6e">
@@ -389,13 +432,13 @@ tbody tr.risk:hover td:nth-child(4){background:#fff0eb}
           <th class="n th-sort" onclick="toggleSort('cov')">10-12月覆盖比例<span id="si-cov" class="si">⇅</span></th>
           <th class="n">10-3月同期销量</th>
           <th class="n th-sort" onclick="toggleSort('cov2')">10-3月覆盖比例<span id="si-cov2" class="si">⇅</span></th>
-          <th style="width:120px;min-width:120px">本月活动计划</th>
-          <th style="width:150px;min-width:150px">活动规划</th>
+          <th class="c" style="width:120px;min-width:120px">本月活动计划</th>
+          <th class="c" style="width:150px;min-width:150px">活动规划</th>
           <th class="c" style="width:110px;min-width:110px">能否做活动</th>
           <th>沟通处</th>
           <th class="n">运营侧需求</th>
           <th class="c">产能是否满足</th>
-          <th>计划下达时间</th>
+          <th class="c">计划下达时间</th>
         </tr></thead>
         <tbody id="tbody"></tbody>
       </table>
@@ -904,15 +947,15 @@ function covClass(c){if(c<50)return'low';if(c<80)return'med';if(c<100)return'goo
 function updateStats(){
   const src=filtered.length>0?filtered:allData;
   const total=src.length;
-  const covered=src.filter(r=>calcCov(r)>=90).length;
-  const rate=total>0?(covered/total*100):0;
+  const active=src.filter(r=>r.curActs&&String(r.curActs).trim()).length;
+  const rate=total>0?(active/total*100):0;
   const risks=src.filter(isRisk).length;
-  document.getElementById('covRate').textContent=rate.toFixed(1)+'%';
-  document.getElementById('covDesc').textContent=covered+' 个SKU总库存达到同期销量的90%，有效经营 '+total+' 个SKU';
+  document.getElementById('actCount').textContent=active.toLocaleString();
+  document.getElementById('actDesc').textContent='当前有活动 '+active.toLocaleString()+' 个品种，共 '+total.toLocaleString()+' 个，占比 '+rate.toFixed(1)+'%';
   document.getElementById('riskCount').textContent=risks.toLocaleString();
   const deg=Math.round(rate/100*360);
   document.getElementById('ringChart').style.background='conic-gradient(#1a8a6e 0deg '+deg+'deg, #e8f8f2 '+deg+'deg 360deg)';
-  document.getElementById('ringVal').textContent=Math.round(rate);
+  document.getElementById('ringVal').textContent=Math.round(rate)+'%';
 }
 
 function populateFilters(){
@@ -938,14 +981,13 @@ function applyFilters(){
   const mfr=document.getElementById('fMfr').value.toLowerCase().trim();
   const covMin=document.getElementById('fCovMin').value;
   const covMax=document.getElementById('fCovMax').value;
-  const state=document.getElementById('fState').value;
   const biz=document.getElementById('fBiz').value;
   const cap=document.getElementById('fCapacity')?document.getElementById('fCapacity').value:'';
   const actFb=document.getElementById('fActFb')?document.getElementById('fActFb').value:'';
   const actStatus=document.getElementById('fActStatus')?document.getElementById('fActStatus').value:'';
   const turn=document.getElementById('fTurn')?document.getElementById('fTurn').value:'';
   const curAct=document.getElementById('fCurAct')?document.getElementById('fCurAct').value:'';
-  console.log('[Filter]',{q,dept,planner,buyer,mfr,covMin,covMax,state,biz,cap,actFb,actStatus,turn,allDataLen:allData.length});
+  console.log('[Filter]',{q,dept,planner,buyer,mfr,covMin,covMax,biz,cap,actFb,actStatus,turn,allDataLen:allData.length});
   try{
   filtered=allData.filter(r=>{
     const nm=(r.name||'').toLowerCase();
@@ -957,11 +999,6 @@ function applyFilters(){
     if(planner&&r.planner!==planner)return false;
     if(buyer&&r.buyer!==buyer)return false;
     if(mfr&&!mf.includes(mfr))return false;
-    if(state){
-      if(state==='covered'&&calcCov(r)<90)return false;
-      if(state==='risk'&&!isRisk(r))return false;
-      if(state==='noSales'&&r.q4Sales>0)return false;
-    }
     if(biz&&r.status!==biz)return false;
     if(actFb==='能做'&&r.actFb!=='能做')return false;
     if(actFb==='待定'&&r.actFb!=='待定')return false;
@@ -1035,7 +1072,7 @@ function applyFilters(){
   render();
 }
 function resetFilters(){
-  ['searchInput','fDept','fPlanner','fBuyer','fMfr','fCovMin','fCovMax','fState','fCapacity','fBiz','fActFb','fActStatus','fCurAct','fTurn'].forEach(id=>{document.getElementById(id).value=''});
+  ['searchInput','fDept','fPlanner','fBuyer','fMfr','fCovMin','fCovMax','fCapacity','fBiz','fActFb','fActStatus','fCurAct','fTurn'].forEach(id=>{document.getElementById(id).value=''});
   filtered=[...allData];cp=1;updateStats();render();
 }
 function filterRisk(){
