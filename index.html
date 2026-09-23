@@ -664,8 +664,8 @@ async function fetchAllRows(table){
   }
   return all;
 }
-async function loadFromSupabase(){
-  showLoading('正在从云端加载数据...');
+async function loadFromSupabase(silent){
+  if(!silent){showLoading('正在从云端加载数据...');}
   try{
     let baseData=await fetchAllRows('sku_base');
     
@@ -756,17 +756,43 @@ async function loadFromSupabase(){
           actFbAt:   ed ? (ed.act_feedback_at  || '') : ''
         };
       });
-      hideLoading();
+      if(!silent){hideLoading();}
       populateFilters();
       applyFilters();
       updateStockTimeDisplay();
       updateSyncStatus('online');
       maybeShowPlannerPopup();
+      if(!silent){setupRealtime();}
     }
   }catch(e){
     console.error('Supabase load error:',e);
     useFallbackData();
   }
+}
+
+// ===== 实时同步（Supabase Realtime + 聚合缓冲）=====
+let _rtTimer=null, _rtChannel=null;
+function setupRealtime(){
+  if(!sb)return;
+  try{
+    if(_rtChannel){try{_rtChannel.unsubscribe();}catch(e){}_rtChannel=null;}
+    _rtChannel=sb.channel('supply-sync-live');
+    const queue=()=>{
+      if(_rtTimer)clearTimeout(_rtTimer);
+      _rtTimer=setTimeout(()=>{_rtTimer=null;silentReload();},2000);
+    };
+    _rtChannel
+      .on('postgres_changes',{event:'*',schema:'public',table:'sku_base'},queue)
+      .on('postgres_changes',{event:'*',schema:'public',table:'sku_edits'},queue)
+      .on('postgres_changes',{event:'*',schema:'public',table:'sku_activity'},queue)
+      .subscribe(status=>{
+        if(status==='SUBSCRIBED'){updateSyncStatus('online');}
+        else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){updateSyncStatus('offline');}
+      });
+  }catch(e){console.warn('Realtime 初始化失败:',e);}
+}
+function silentReload(){
+  loadFromSupabase(true);
 }
 
 function useFallbackData(){
