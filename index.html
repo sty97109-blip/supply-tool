@@ -386,6 +386,13 @@ input.fsel{width:100%;min-width:0;max-width:none}
       <option value="大型专区">大型专区</option>
       <option value="特价专区">特价专区</option>
     </select>
+    <select class="fsel" id="fRoad" onchange="applyFilters()">
+      <option value="">活动规划</option>
+      <option value="捡漏专区">捡漏专区</option>
+      <option value="主题专区">主题专区</option>
+      <option value="满返专区">满返专区</option>
+      <option value="未购进">未购进</option>
+    </select>
     <select class="fsel" id="fTurn" onchange="applyFilters()">
       <option value="">周转变化</option>
       <option value="has">周转下降过快</option>
@@ -696,6 +703,27 @@ async function loadFromSupabase(silent){
       } catch (e) { console.warn('sku_activity 拉取失败（不影响其他功能）', e); }
       var _t=new Date();
       var TODAY_STR=_t.getFullYear()+'-'+String(_t.getMonth()+1).padStart(2,'0')+'-'+String(_t.getDate()).padStart(2,'0');
+
+      function _filterPlanExpired(plan){
+        // 本月活动计划：按段解析结束日期，已过期(结束<今天)的活动整段剔除
+        if(!plan) return '';
+        var segs=String(plan).split('、');
+        var kept=[];
+        for(var i=0;i<segs.length;i++){
+          var seg=segs[i].trim(); if(!seg) continue;
+          var endM=null,endD=null;
+          var m1=seg.match(/\b(\d{1,2})\.(\d{1,2})\s*-\s*(\d{1,2})\.(\d{1,2})\b/);
+          var m2=seg.match(/\b(\d{1,2})-(\d{1,2})\s*~\s*(\d{1,2})-(\d{1,2})\b/);
+          var y=_t.getFullYear(), mine=1;
+          if(m2){ endM=parseInt(m2[3],10); endD=parseInt(m2[4],10); mine=parseInt(m2[1],10); }
+          else if(m1){ endM=parseInt(m1[3],10); endD=parseInt(m1[4],10); mine=parseInt(m1[1],10); }
+          if(endM==null){ kept.push(seg); continue; }
+          if(endM>9 && mine<9) y--;
+          var endStr=y+'-'+String(endM).padStart(2,'0')+'-'+String(endD).padStart(2,'0');
+          if(endStr>=TODAY_STR) kept.push(seg);
+        }
+        return kept.join('、');
+      }
       function _activeSegments(names, actEnd){
         if(!names) return '';
         var parts = String(names).split('、');
@@ -749,7 +777,7 @@ async function loadFromSupabase(silent){
           curTypes:  ao.act_types || '',                                    // 活动类型
           turnText:  ao.turn_text || '',                                    // 品种周转变化
           keyAct:    ap.key_act   || ao.key_act || '',                      // 重点活动
-          actPlan:   ap.act_plan  || ao.act_plan || '',                     // 本月活动计划
+          actPlan:   _filterPlanExpired(ap.act_plan  || ao.act_plan || ''),                     // 本月活动计划
           actRoad:   ap.act_road  || ao.act_road || '',                     // 活动规划
           actFb:     ed ? (ed.act_feedback || '') : '',                     // 能否做活动（你们填）
           actFbNote: ed ? (ed.act_feedback_note || '') : '',
@@ -1012,6 +1040,7 @@ function applyFilters(){
   const actFb=document.getElementById('fActFb')?document.getElementById('fActFb').value:'';
   const actStatus=document.getElementById('fActStatus')?document.getElementById('fActStatus').value:'';
   const turn=document.getElementById('fTurn')?document.getElementById('fTurn').value:'';
+  const road=document.getElementById('fRoad')?document.getElementById('fRoad').value:'';
   const curAct=document.getElementById('fCurAct')?document.getElementById('fCurAct').value:'';
   console.log('[Filter]',{q,dept,planner,buyer,mfr,covMin,covMax,biz,cap,actFb,actStatus,turn,allDataLen:allData.length});
   try{
@@ -1034,6 +1063,13 @@ function applyFilters(){
     if(actStatus==='cur'&&!r.curActs)return false;
     if(actStatus==='plan'&&!r.actPlan)return false;
     if(turn==='has'&&!r.turnText)return false;
+    if(road){
+      const rd=r.actRoad||'';
+      if(road==='捡漏专区'&&rd.indexOf('捡漏')<0)return false;
+      if(road==='主题专区'&&rd.indexOf('主题')<0)return false;
+      if(road==='满返专区'&&rd.indexOf('满返')<0)return false;
+      if(road==='未购进'&&rd.indexOf('未购进')<0)return false;
+    }
     if(curAct){
       const ca=r.curActs||'';
       if(curAct==='秒杀'&&ca.indexOf('秒杀')<0)return false;
