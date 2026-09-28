@@ -439,9 +439,8 @@ input.fsel{width:100%;min-width:0;max-width:none}
           <th class="n th-sort" onclick="toggleSort('cov')">10-12月覆盖比例<span id="si-cov" class="si">⇅</span></th>
           <th class="n">10-3月同期销量</th>
           <th class="n th-sort" onclick="toggleSort('cov2')">10-3月覆盖比例<span id="si-cov2" class="si">⇅</span></th>
-          <th class="c" style="width:120px;min-width:120px">本月活动计划</th>
           <th class="c" style="width:150px;min-width:150px">活动规划</th>
-          <th class="c" style="width:110px;min-width:110px">能否做活动</th>
+          <th class="c" style="width:150px;min-width:150px">能否做活动<br><button type="button" id="btnResetActFb" onclick="resetMyActFb()" style="margin-top:4px;padding:2px 8px;font-size:11px;border:1px solid #f59e0b;background:#fff7ed;color:#b45309;border-radius:4px;cursor:pointer;display:none" title="把本人负责的SKU「能否做活动」一键重置为待计划填写">重置为待计划填写</button></th>
           <th>沟通处</th>
           <th class="n">运营侧需求</th>
           <th class="c">产能是否满足</th>
@@ -596,6 +595,11 @@ function applyUserRole(){
   if(userRole==='admin'){
     var sub = document.querySelector('.header-sub');
     if(sub) sub.textContent = '管理员 · 仅可编辑本人负责的产品';
+  }
+  // 重置按钮：仅管理员且已选择具体计划人员时显示
+  var btnR = document.getElementById('btnResetActFb');
+  if(btnR){
+    btnR.style.display = (userRole==='admin' && currentPlanner && currentPlanner!=='运营' && currentPlanner!=='仅浏览') ? 'inline-block' : 'none';
   }
 }
 function doLogout(){
@@ -1061,7 +1065,7 @@ function applyFilters(){
     if(actFb==='待计划填写'&&(r.actFb==='能做'||r.actFb==='待定'||r.actFb==='不能做'))return false;
     if(actStatus==='key'&&!r.keyAct)return false;
     if(actStatus==='cur'&&!r.curActs)return false;
-    if(actStatus==='plan'&&!r.actPlan)return false;
+    if(actStatus==='plan'&&!r.actRoad)return false;
     if(turn==='has'&&!r.turnText)return false;
     if(road){
       const rd=r.actRoad||'';
@@ -1189,7 +1193,6 @@ function render(){
       +'<td class="n">'+(noSales?'<span style="color:#999;font-size:12px">无销售数据</span>':'<span class="cov '+cc+'">'+c.toFixed(1)+'%</span>')+'</td>'
       +'<td class="n">'+((r.q4Sales||0)+(r.q1_26Sales||0)).toLocaleString()+'</td>'
       +'<td class="n">'+(noSales2?'<span style="color:#999;font-size:12px">无销售数据</span>':'<span class="cov '+covClass(c2)+'">'+c2.toFixed(1)+'%</span>')+'</td>'
-      +actPlanTd(r)
       +actRoadTd(r)
       +actFbTd(r,idx,canActFb)
       +'<td class="'+editClass+'"'+editAttr+' data-i="'+idx+'" data-f="remark" style="min-width:100px'+(remarkColor?';'+remarkColor:'')+'">'+escHtml(r.remark||'')+'</td>'
@@ -1310,6 +1313,41 @@ function updActFb(el){
 }
 document.getElementById('tbody').addEventListener('blur',function(e){if(e.target.classList.contains('editable'))updCell(e.target)},true);
 
+// 重置：把当前登录管理员负责(planner=currentPlanner)的所有SKU「能否做活动」一键重置为待计划填写
+function resetMyActFb(){
+  if(userRole!=='admin' || !currentPlanner || currentPlanner==='运营' || currentPlanner==='仅浏览'){
+    toast('请以管理员身份登录并选择计划人员');
+    return;
+  }
+  var mine = allData.filter(function(r){ return r.planner===currentPlanner && r.actFb && r.actFb!=='' && r.actFb!=='待计划填写'; });
+  if(!mine.length){ toast('「'+currentPlanner+'」负责的产品没有已填写的能否做活动'); return; }
+  if(!confirm('确定将「'+currentPlanner+'」负责的 '+mine.length+' 个SKU的「能否做活动」全部重置为「待计划填写」吗？\n将清空已填写的能做/待定/不能做及原因。')) return;
+  if(!supabaseReady || !sb){ toast('未连接云端'); return; }
+  var rows = mine.map(function(r){
+    return { erp_id:r.erpId, dept:r.dept, act_feedback:'', act_feedback_note:'', act_feedback_at:'', updated_at:new Date().toISOString() };
+  });
+  // 分批 upsert（每批 500）
+  var all=[];
+  for(var i=0;i<rows.length;i+=500){ all.push(rows.slice(i,i+500)); }
+  var chain=Promise.resolve(); var total=0;
+  all.forEach(function(batch){
+    chain=chain.then(function(){
+      return sb.from('sku_edits').upsert(batch,{onConflict:'erp_id,dept'}).then(function(res){
+        if(res.error) throw res.error;
+        total+=batch.length;
+      });
+    });
+  });
+  chain.then(function(){
+    // 本地同步清空
+    mine.forEach(function(r){ r.actFb=''; r.actFbNote=''; r.actFbAt=''; });
+    toast('已重置 '+total+' 条为「待计划填写」');
+    render(); populateFilters();
+  }).catch(function(e){
+    toast('重置失败：'+(e.message||e));
+  });
+}
+
 
 
 function csvCell(v){
@@ -1321,7 +1359,7 @@ function exportMine(){
   if(!currentPlanner){ toast('未选择计划人员'); return; }
   var list = allData.filter(function(r){ return r.planner===currentPlanner; });
   if(!list.length){ toast('没有找到「'+currentPlanner+'」负责的产品数据'); return; }
-  var cols=['ERP编号','部门','品种名称','规格','厂家','采销','计划人员','在库','在外','在产','总库存','品种周转变化','10-12月销量','差额','10-12月覆盖率%','10-3月销量','10-3月覆盖率%','本月活动计划','活动规划','能否做活动','运营侧需求','是否满足产能','计划日期','备注'];
+  var cols=['ERP编号','部门','品种名称','规格','厂家','采销','计划人员','在库','在外','在产','总库存','品种周转变化','10-12月销量','差额','10-12月覆盖率%','10-3月销量','10-3月覆盖率%','活动规划','能否做活动','运营侧需求','是否满足产能','计划日期','备注'];
   var rows=list.map(function(r){
     return [
       r.erpId, r.dept, r.name, r.spec, r.manufacturer, r.buyer, r.planner,
@@ -1329,7 +1367,7 @@ function exportMine(){
       calcTotal(r), r.turnText||'',
       r.q4Sales||0, calcDiff(r), calcCov(r).toFixed(1),
       (r.q4Sales||0)+(r.q1_26Sales||0), calcCov2(r).toFixed(1),
-      r.actPlan||'', (r.actRoad||'').split('|').join(' · '), r.actFb||'',
+      (r.actRoad||'').split('|').join(' · '), r.actFb||'',
       r.opsDemand||0, r.capacitySatisfied||'', r.planDate||'', r.remark||''
     ];
   });
