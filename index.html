@@ -281,6 +281,18 @@ input.fsel{width:100%;min-width:0;max-width:none}
   </div>
 </div>
 
+<!-- 活动规划提醒弹窗 -->
+<div class="pp-overlay" id="actRemindPopup">
+  <div class="pp-card">
+    <div class="pp-head" id="actRemindHead">📢 活动规划待确认</div>
+    <div class="pp-body" id="actRemindBody"></div>
+    <div class="pp-foot">
+      <button class="pp-btn pp-btn-ghost" onclick="closeActRemindPopup()">已知悉</button>
+      <button class="pp-btn pp-btn-primary" onclick="actRemindGoFilter()">一键筛选</button>
+    </div>
+  </div>
+</div>
+
 <!-- Loading -->
 <div class="loading-overlay" id="loadingOverlay" style="display:none">
   <div class="loading-spinner"></div>
@@ -440,7 +452,7 @@ input.fsel{width:100%;min-width:0;max-width:none}
           <th class="n">10-3月同期销量</th>
           <th class="n th-sort" onclick="toggleSort('cov2')">10-3月覆盖比例<span id="si-cov2" class="si">⇅</span></th>
           <th class="c" style="width:150px;min-width:150px">活动规划</th>
-          <th class="c" style="width:150px;min-width:150px">能否做活动<br><button type="button" id="btnResetActFb" onclick="resetMyActFb()" style="margin-top:4px;padding:2px 8px;font-size:11px;border:1px solid #f59e0b;background:#fff7ed;color:#b45309;border-radius:4px;cursor:pointer;display:none" title="把本人负责的SKU「能否做活动」一键重置为待计划填写">重置为待计划填写</button></th>
+          <th class="c" style="width:150px;min-width:150px">能否做活动<br><button type="button" id="btnResetActFb" onclick="resetMyActFb()" style="margin-top:4px;padding:2px 8px;font-size:11px;border:1px solid #f59e0b;background:#fff7ed;color:#b45309;border-radius:4px;cursor:pointer;display:none" title="把本人负责的SKU「能否做活动」一键重置为待计划填写">重置为待计划填写</button><button type="button" id="btnPushAct" onclick="oneclickPushAct()" style="margin-top:4px;margin-left:4px;padding:2px 8px;font-size:11px;border:1px solid #1a8a6e;background:#ecfdf5;color:#0f766e;border-radius:4px;cursor:pointer;display:none" title="向所有打开的网页推送活动规划提醒弹窗">一键推送</button></th>
           <th>沟通处</th>
           <th class="n">运营侧需求</th>
           <th class="c">产能是否满足</th>
@@ -537,6 +549,7 @@ function checkAuth(){
     document.getElementById('loginOverlay').style.display='none';
     document.getElementById('appContent').style.display='';
     applyUserRole();
+    startActRemindTimer();
     loadFromSupabase();
   }
 }
@@ -579,6 +592,7 @@ function doLogin(){
     document.getElementById('loginOverlay').style.display='none';
     document.getElementById('appContent').style.display='';
     applyUserRole();
+    startActRemindTimer();
     loadFromSupabase();
   }else{
     document.getElementById('loginErr').textContent='账号或密码错误';
@@ -601,6 +615,11 @@ function applyUserRole(){
   if(btnR){
     btnR.style.display = (userRole==='admin' && currentPlanner && currentPlanner!=='运营' && currentPlanner!=='仅浏览') ? 'inline-block' : 'none';
   }
+  // 一键推送按钮：仅沈天佑角色（管理员选择沈天佑）显示
+  var btnP = document.getElementById('btnPushAct');
+  if(btnP){
+    btnP.style.display = (userRole==='admin' && currentPlanner==='沈天佑') ? 'inline-block' : 'none';
+  }
 }
 function doLogout(){
   sessionStorage.removeItem(SK_AUTH);
@@ -610,6 +629,105 @@ function doLogout(){
   currentPlanner = '';
   userRole = 'viewer';
   location.reload();
+}
+// ===== 活动规划提醒（新功能）=====
+// localStorage 已悉记录：q4_act_remind_seen -> { [key]: 1 }  key=erpId|dept|actRoad
+const AR_SEEN_KEY = 'q4_act_remind_seen';
+// 当前本轮已提示过的品种 key（防止同一状态持续弹）
+let _arActiveKeys = null;
+let _arMode = 'live';   // live=新规划；timer=每3小时兜底
+
+function _arKey(r){ return r.erpId + '|' + r.dept + '|' + r.actRoad; }
+function _arLoadSeen(){
+  try{ return JSON.parse(localStorage.getItem(AR_SEEN_KEY)||'{}'); }catch(e){ return {}; }
+}
+function _arSaveSeen(o){
+  try{ localStorage.setItem(AR_SEEN_KEY, JSON.stringify(o)); }catch(e){}
+}
+// 当前登录者是否可接收活动规划提醒（管理员且已选具体负责人）
+function _arEligible(){
+  return userRole==='admin' && currentPlanner && currentPlanner!=='运营' && currentPlanner!=='仅浏览';
+}
+// 每3小时兜底提醒定时器（仅启动一次）
+let _arTimerStarted = false;
+function startActRemindTimer(){
+  if(_arTimerStarted) return;
+  _arTimerStarted = true;
+  setInterval(function(){ maybeShowActRemind('timer'); }, 3*60*60*1000);
+}
+// 收集「当前负责人名下 + 有活动规划 + 未填能否做活动」的品种
+function _arCollect(){
+  if(!_arEligible()) return [];
+  var out = [];
+  (allData||[]).forEach(function(r){
+    if(r.planner!==currentPlanner) return;
+    if(!r.actRoad) return;                    // 活动规划列必须有内容
+    var fb=(r.actFb||'').trim();
+    if(fb==='能做'||fb==='待定'||fb==='不能做') return; // 已填写
+    out.push(r);
+  });
+  return out;
+}
+// 弹出提醒：找出需要提醒的品种（未已悉的），返回剩余已激活未关闭的用于一键筛选
+function maybeShowActRemind(mode){
+  if(!_arEligible()) return;
+  var list = _arCollect();
+  if(!list.length){ _arActiveKeys=null; return; }
+  var seen = _arLoadSeen();
+  // live：待提示 = 有规划但未填写，且不在已悉记录里（避免重复弹同一项）
+  // timer/push：只要有规划但未填写就提示（兜底 / 主动推送，不查已悉）
+  var todo;
+  if(mode==='timer'||mode==='push'){
+    todo = list;
+  }else{
+    todo = list.filter(function(r){ return !seen[_arKey(r)]; });
+  }
+  if(!todo.length){ _arActiveKeys=null; return; }
+  _arMode = (mode==='push') ? 'push' : mode;
+
+  var html = '<div style="margin-bottom:10px;font-size:13px;color:#444">负责人：<b style="color:#c2410c">'+escHtml(currentPlanner)+'</b>，有 <b style="color:#c2410c">'+todo.length+'</b> 个品种待确认「能否做活动」'+(mode==='timer'?'（每3小时提醒）':(mode==='push'?'（沈天佑一键推送）':''))+'：</div>';
+  todo.slice(0,80).forEach(function(r){
+    var rd=(r.actRoad||'').split('|').join(' · ');
+    html += '<div class="pp-item" style="display:flex;gap:8px;align-items:flex-start"><div class="pp-name" style="flex:0 0 auto" title="'+escHtml(r.name)+'">'+escHtml((r.name||'').slice(0,12))+'</div><div style="font-size:11px;color:#888;min-width:0;flex:1">'+escHtml(r.spec||'')+'</div><div style="font-size:11px;color:#b45309;flex:0 0 auto">'+escHtml(rd)+'</div></div>';
+  });
+  if(todo.length>80) html += '<div style="color:#999;font-size:12px;text-align:center;padding:6px">仅展示前 80 条，共 '+todo.length+' 条</div>';
+  document.getElementById('actRemindHead').textContent =
+    mode==='timer' ? '⏰ 活动规划待确认（每3小时提醒）' :
+    (mode==='push' ? '📢 沈天佑推送：活动规划待确认' : '📢 有新的活动规划待确认');
+  document.getElementById('actRemindBody').innerHTML = html;
+  document.getElementById('actRemindPopup').classList.add('active');
+  // 记住本轮激活的品种，供一键筛选
+  _arActiveKeys = todo.map(function(r){ return _arKey(r); });
+}
+// 已知悉：把本轮激活品种记入已悉，关闭弹窗
+function closeActRemindPopup(){
+  var el=document.getElementById('actRemindPopup');
+  if(el) el.classList.remove('active');
+  // 仅 live（新规划）模式把本轮品种记入永久已悉；timer 兜底不记，3小时后仍提醒
+  if(_arActiveKeys && _arActiveKeys.length && _arMode==='live'){
+    var seen=_arLoadSeen();
+    _arActiveKeys.forEach(function(k){ seen[k]=1; });
+    _arSaveSeen(seen);
+  }
+  _arActiveKeys=null;
+}
+// 一键筛选：关闭弹窗并把这些品种筛出来
+function actRemindGoFilter(){
+  var el=document.getElementById('actRemindPopup');
+  if(el) el.classList.remove('active');
+  if(_arActiveKeys && _arActiveKeys.length){
+    var keys={}; _arActiveKeys.forEach(function(k){ keys[k]=1; });
+    var erps = [];
+    (allData||[]).forEach(function(r){ if(keys[_arKey(r)] && erps.indexOf(r.erpId)<0) erps.push(r.erpId); });
+    // 将 erp_id 集合存入 session 供 applyFilters 使用
+    sessionStorage.setItem('q4_act_remind_filter', JSON.stringify(erps));
+  }
+  _arActiveKeys=null;
+  var ft=document.getElementById('fTurn'); if(ft) ft.value='';
+  var fr=document.getElementById('fRoad'); if(fr) fr.value='';
+  var fa=document.getElementById('fActFb'); if(fa) fa.value='';
+  var fp=document.getElementById('fPlanner'); if(fp) fp.value=currentPlanner;
+  applyFilters();
 }
 function maybeShowPlannerPopup(){
   if(!pendingPlannerPopup) return;
@@ -794,6 +912,7 @@ async function loadFromSupabase(silent){
       updateStockTimeDisplay();
       updateSyncStatus('online');
       maybeShowPlannerPopup();
+      maybeShowActRemind('live');
       if(!silent){setupRealtime();}
     }
   }catch(e){
@@ -803,7 +922,7 @@ async function loadFromSupabase(silent){
 }
 
 // ===== 实时同步（Supabase Realtime + 聚合缓冲）=====
-let _rtTimer=null, _rtChannel=null;
+let _rtTimer=null, _rtChannel=null, _pushChannel=null;
 function setupRealtime(){
   if(!sb)return;
   try{
@@ -821,7 +940,45 @@ function setupRealtime(){
         if(status==='SUBSCRIBED'){updateSyncStatus('online');}
         else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){updateSyncStatus('offline');}
       });
+    // 活动规划一键推送广播频道（所有打开页面订阅接收）
+    if(_pushChannel){try{_pushChannel.unsubscribe();}catch(e){}_pushChannel=null;}
+    _pushChannel=sb.channel('act-push');
+    _pushChannel
+      .on('broadcast',{event:'oneclick_push'},function(payload){
+        // 收到推送：强制弹出本人负责人的活动规划提醒（不查已悉，视为主动通知）
+        maybeShowActRemind('push');
+      })
+      .subscribe(function(){});
   }catch(e){console.warn('Realtime 初始化失败:',e);}
+}
+// 沈天佑「一键推送」：向所有打开的网页广播活动规划提醒
+function oneclickPushAct(){
+  if(userRole!=='admin' || currentPlanner!=='沈天佑'){
+    toast('仅沈天佑角色可使用一键推送');
+    return;
+  }
+  if(!sb){ toast('未连接云端，无法推送'); return; }
+  if(!confirm('确定向所有打开的网页推送「活动规划提醒」弹窗吗？\n各负责人将收到本人名下待确认「能否做活动」的品种提醒。')) return;
+  try{
+    if(_pushChannel){
+      _pushChannel.send({type:'broadcast',event:'oneclick_push',payload:{planner:'沈天佑'}})
+        .then(function(){ toast('已推送给所有打开的网页'); })
+        .catch(function(e){ toast('推送失败：'+(e&&e.message||'')); });
+    }else{
+      // 未建频道则现建发送
+      var ch=sb.channel('act-push');
+      ch.on('broadcast',{event:'oneclick_push'},function(){});
+      ch.subscribe(function(status){
+        if(status==='SUBSCRIBED'){
+          ch.send({type:'broadcast',event:'oneclick_push',payload:{planner:'沈天佑'}})
+            .then(function(){ toast('已推送给所有打开的网页'); })
+            .catch(function(e){ toast('推送失败：'+(e&&e.message||'')); });
+        }else{
+          toast('推送频道连接失败（'+status+'）');
+        }
+      });
+    }
+  }catch(e){ toast('推送出错：'+(e&&e.message||'未知')); }
 }
 function silentReload(){
   loadFromSupabase(true);
@@ -846,6 +1003,7 @@ function useFallbackData(){
   updateStockTimeDisplay();
   updateSyncStatus('offline');
   maybeShowPlannerPopup();
+  maybeShowActRemind('live');
 }
 
 // ===== 播种数据到 Supabase =====
@@ -1046,6 +1204,11 @@ function applyFilters(){
   const turn=document.getElementById('fTurn')?document.getElementById('fTurn').value:'';
   const road=document.getElementById('fRoad')?document.getElementById('fRoad').value:'';
   const curAct=document.getElementById('fCurAct')?document.getElementById('fCurAct').value:'';
+  let remindErps=null;
+  try{
+    const r1=sessionStorage.getItem('q4_act_remind_filter');
+    if(r1){ remindErps=JSON.parse(r1); sessionStorage.removeItem('q4_act_remind_filter'); }
+  }catch(e){};
   console.log('[Filter]',{q,dept,planner,buyer,mfr,covMin,covMax,biz,cap,actFb,actStatus,turn,allDataLen:allData.length});
   try{
   filtered=allData.filter(r=>{
@@ -1055,6 +1218,10 @@ function applyFilters(){
     const mf=(r.manufacturer||'').toLowerCase();
     if(q&&!nm.includes(q)&&!eid.includes(q)&&!sp.includes(q)&&!mf.includes(q))return false;
     if(dept&&r.dept!==dept)return false;
+    if(remindErps){
+      // 一键筛选：仅保留活动规划提醒激活的品种
+      if(remindErps.indexOf(r.erpId)<0)return false;
+    }
     if(planner&&r.planner!==planner)return false;
     if(buyer&&r.buyer!==buyer)return false;
     if(mfr&&!mf.includes(mfr))return false;
