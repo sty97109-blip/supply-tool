@@ -452,7 +452,7 @@ input.fsel{width:100%;min-width:0;max-width:none}
           <th class="n">10-3月同期销量</th>
           <th class="n th-sort" onclick="toggleSort('cov2')">10-3月覆盖比例<span id="si-cov2" class="si">⇅</span></th>
           <th class="c" style="width:150px;min-width:150px">活动规划</th>
-          <th class="c" style="width:150px;min-width:150px">能否做活动<br><button type="button" id="btnResetActFb" onclick="resetMyActFb()" style="margin-top:4px;padding:2px 8px;font-size:11px;border:1px solid #f59e0b;background:#fff7ed;color:#b45309;border-radius:4px;cursor:pointer;display:none" title="把本人负责的SKU「能否做活动」一键重置为待计划填写">重置为待计划填写</button><button type="button" id="btnPushAct" onclick="oneclickPushAct()" style="margin-top:4px;margin-left:4px;padding:2px 8px;font-size:11px;border:1px solid #1a8a6e;background:#ecfdf5;color:#0f766e;border-radius:4px;cursor:pointer;display:none" title="向所有打开的网页推送活动规划提醒弹窗">一键推送</button></th>
+          <th class="c" style="width:150px;min-width:150px">能否做活动<br><button type="button" id="btnResetActFb" onclick="resetMyActFb()" style="margin-top:4px;padding:2px 8px;font-size:11px;border:1px solid #f59e0b;background:#fff7ed;color:#b45309;border-radius:4px;cursor:pointer;display:none" title="把本人负责的SKU「能否做活动」一键重置为待计划填写">重置为待计划填写</button><button type="button" id="btnPushAct" onclick="onPushOrFilter()" style="margin-top:4px;margin-left:4px;padding:2px 8px;font-size:11px;border:1px solid #1a8a6e;background:#ecfdf5;color:#0f766e;border-radius:4px;cursor:pointer;display:none" title="沈天佑：一键推送活动规划提醒；其他人：筛选本人负责的有规划未填品种">一键推送</button></th>
           <th>沟通处</th>
           <th class="n">运营侧需求</th>
           <th class="c">产能是否满足</th>
@@ -615,10 +615,20 @@ function applyUserRole(){
   if(btnR){
     btnR.style.display = (userRole==='admin' && currentPlanner && currentPlanner!=='运营' && currentPlanner!=='仅浏览') ? 'inline-block' : 'none';
   }
-  // 一键推送按钮：仅沈天佑角色（管理员选择沈天佑）显示
+  // 一键推送/一键筛选按钮：沈天佑→一键推送；其他具体负责人→一键筛选
   var btnP = document.getElementById('btnPushAct');
   if(btnP){
-    btnP.style.display = (userRole==='admin' && currentPlanner==='沈天佑') ? 'inline-block' : 'none';
+    var isPlanner = userRole==='admin' && currentPlanner && currentPlanner!=='运营' && currentPlanner!=='仅浏览';
+    btnP.style.display = isPlanner ? 'inline-block' : 'none';
+    if(isPlanner){
+      btnP.textContent = (currentPlanner==='沈天佑') ? '一键推送' : '一键筛选';
+      btnP.style.borderColor = (currentPlanner==='沈天佑') ? '#1a8a6e' : '#c2410c';
+      btnP.style.background = (currentPlanner==='沈天佑') ? '#ecfdf5' : '#fff7ed';
+      btnP.style.color = (currentPlanner==='沈天佑') ? '#0f766e' : '#b45309';
+      btnP.title = (currentPlanner==='沈天佑')
+        ? '向所有打开的网页推送活动规划提醒弹窗'
+        : '筛选出本人负责的、有活动规划但未填写「能否做活动」的品种';
+    }
   }
 }
 function doLogout(){
@@ -952,6 +962,35 @@ function setupRealtime(){
   }catch(e){console.warn('Realtime 初始化失败:',e);}
 }
 // 沈天佑「一键推送」：向所有打开的网页广播活动规划提醒
+// 点击「一键推送/一键筛选」按钮：按角色分发
+function onPushOrFilter(){
+  if(userRole!=='admin' || !currentPlanner || currentPlanner==='运营' || currentPlanner==='仅浏览'){
+    toast('仅管理员选择具体负责人后可使用');
+    return;
+  }
+  if(currentPlanner==='沈天佑'){
+    oneclickPushAct();
+  }else{
+    filterMyPendingAct();
+  }
+}
+// 一键筛选：筛出本人负责的、有活动规划但未填写「能否做活动」的品种
+function filterMyPendingAct(){
+  var list=_arCollect();
+  if(!list.length){
+    toast('「'+currentPlanner+'」负责的产品中没有「有活动规划但未填写能否做活动」的品种');
+    return;
+  }
+  var erps=[];
+  list.forEach(function(r){ if(erps.indexOf(r.erpId)<0) erps.push(r.erpId); });
+  sessionStorage.setItem('q4_act_remind_filter', JSON.stringify(erps));
+  var ft=document.getElementById('fTurn'); if(ft) ft.value='';
+  var fr=document.getElementById('fRoad'); if(fr) fr.value='';
+  var fa=document.getElementById('fActFb'); if(fa) fa.value='';
+  var fp=document.getElementById('fPlanner'); if(fp) fp.value=currentPlanner;
+  applyFilters();
+  toast('已筛出「'+currentPlanner+'」名下 ' + list.length + ' 个有活动规划未填写的品种');
+}
 function oneclickPushAct(){
   if(userRole!=='admin' || currentPlanner!=='沈天佑'){
     toast('仅沈天佑角色可使用一键推送');
