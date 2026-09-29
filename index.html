@@ -1324,7 +1324,7 @@ function resetMyActFb(){
   if(!confirm('确定将「'+currentPlanner+'」负责的 '+mine.length+' 个SKU的「能否做活动」全部重置为「待计划填写」吗？\n将清空已填写的能做/待定/不能做及原因。')) return;
   if(!supabaseReady || !sb){ toast('未连接云端'); return; }
   var rows = mine.map(function(r){
-    return { erp_id:r.erpId, dept:r.dept, act_feedback:'', act_feedback_note:'', act_feedback_at:'', updated_at:new Date().toISOString() };
+    return { erp_id:r.erpId, dept:r.dept, act_feedback:'', act_feedback_note:null, act_feedback_at:null, updated_at:new Date().toISOString() };
   });
   // 分批 upsert（每批 500）
   var all=[];
