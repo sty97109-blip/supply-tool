@@ -888,8 +888,8 @@ async function loadFromSupabase(silent){
       try {
         const acts = await fetchAllRows('sku_activity');
         (acts || []).forEach(a => {
-          if (a.dept && a.dept !== '二部') return;     // 只接二部推送
-          (a.kind === 'planned' ? actMapP : actMapO)[a.erp_id] = a;
+          if (a.dept && a.dept !== '二部' && a.dept !== '一部') return;   // 接二部+一部运营推送
+          (a.kind === 'planned' ? actMapP : actMapO)[a.erp_id + '||' + a.dept] = a;   // 按erp+部门区分，避免一部二部互相覆盖
         });
       } catch (e) { console.warn('sku_activity 拉取失败（不影响其他功能）', e); }
       var _t=new Date();
@@ -942,7 +942,7 @@ async function loadFromSupabase(silent){
       allData=baseData.map(r=>{
         const key=r.erp_id+'||'+r.dept;
         const ed=editsMap[key];
-        const ao = actMapO[r.erp_id] || {}, ap = actMapP[r.erp_id] || {};
+        const ao = actMapO[key] || {}, ap = actMapP[key] || {};   // 按erp+部门取，互不覆盖
         return {
           erpId:r.erp_id||'',
           dept:r.dept||'',
@@ -967,8 +967,8 @@ async function loadFromSupabase(silent){
           curActs:   (ao.act_names && ao.act_end && ao.act_end < TODAY_STR) ? '' : _activeSegments(ao.act_names, ao.act_end),  // 当前活动（整条+段级过期过滤）
           curTypes:  ao.act_types || '',                                    // 活动类型
           turnText:  ao.turn_text || '',                                    // 品种周转变化
-          czTurn:    ap.cz_turn != null ? ap.cz_turn : (ao.cz_turn != null ? ao.cz_turn : ''),   // 崇州周转天数
-          tjTurn:    ap.tj_turn != null ? ap.tj_turn : (ao.tj_turn != null ? ao.tj_turn : ''),   // 天津周转天数
+          czTurn:    ap.days_cz != null ? ap.days_cz : (ao.days_cz != null ? ao.days_cz : ''),   // 崇州周转天数
+          tjTurn:    ap.days_tj != null ? ap.days_tj : (ao.days_tj != null ? ao.days_tj : ''),   // 天津周转天数
           czDaily:   ap.cz_daily != null ? ap.cz_daily : (ao.cz_daily != null ? ao.cz_daily : ''),   // 崇州日销
           tjDaily:   ap.tj_daily != null ? ap.tj_daily : (ao.tj_daily != null ? ao.tj_daily : ''),   // 天津日销
           keyAct:    ap.key_act   || ao.key_act || '',                      // 重点活动
