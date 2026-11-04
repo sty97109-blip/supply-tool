@@ -56,10 +56,10 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.5;color:#333;background:#f0f2f5}
-.header{background:linear-gradient(135deg,#1a8a6e 0%,#1db88a 100%);padding:16px 32px;display:flex;justify-content:space-between;align-items:center;color:#fff}
+.header{background:linear-gradient(135deg,#1a8a6e 0%,#1db88a 100%);padding:9px 24px;display:flex;justify-content:space-between;align-items:center;color:#fff}
 .header-left{display:flex;align-items:center;gap:14px}
-.header-icon{width:42px;height:42px;background:rgba(255,255,255,.2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px}
-.header-title{font-size:20px;font-weight:700;letter-spacing:.5px}
+.header-icon{width:32px;height:32px;background:rgba(255,255,255,.2);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px}
+.header-title{font-size:17px;font-weight:700;letter-spacing:.5px}
 .header-sub{font-size:12px;opacity:.8;margin-top:2px}
 .header-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .btn-h{padding:7px 16px;border-radius:6px;font-size:13px;cursor:pointer;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.15);color:#fff;display:inline-flex;align-items:center;gap:5px;transition:background .2s;white-space:nowrap}
@@ -74,23 +74,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hira
 .user-badge .uname{font-weight:600}
 .btn-logout{padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.1);color:#fff}
 .btn-logout:hover{background:rgba(255,107,107,.3);border-color:#ff6b6b}
-.main{padding:20px 24px;max-width:1800px;margin:0 auto}
-.stats-row{display:flex;gap:20px;margin-bottom:20px}
-.stat-card{flex:1;background:#fff;border-radius:12px;padding:22px 26px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.main{padding:12px 20px;max-width:1800px;margin:0 auto}
+.stats-row{display:flex;gap:14px;margin-bottom:12px}
+.stat-card{flex:1;background:#fff;border-radius:10px;padding:11px 20px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 4px rgba(0,0,0,.06)}
 .stat-info{flex:1}
-.stat-label{font-size:13px;color:#888;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.stat-label{font-size:12px;color:#888;margin-bottom:3px;display:flex;align-items:center;gap:6px}
+.stat-card .si{width:21px;height:21px;border-radius:6px;font-size:12px}
 .si{width:28px;height:28px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:14px}
 .si-g{background:#e8f8f2;color:#1a8a6e}
 .si-r{background:#fff0f0;color:#e74c3c}
-.stat-val{font-size:38px;font-weight:700;color:#1a1a1a;line-height:1.1}
-.stat-desc{font-size:12px;color:#999;margin-top:6px}
+.stat-val{font-size:25px;font-weight:700;color:#1a1a1a;line-height:1.15}
+.stat-desc{font-size:11px;color:#999;margin-top:2px}
 .stat-right{text-align:right}
 .stat-right a{color:#e74c3c;font-size:13px;text-decoration:none;cursor:pointer}
 .stat-right a:hover{text-decoration:underline}
 .ring{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;margin-left:20px}
 .ring::after{content:'';position:absolute;width:62px;height:62px;border-radius:50%;background:#fff}
 .ring span{position:relative;z-index:1;font-size:22px;font-weight:700;color:#1a8a6e}
-.filter-bar{background:#fff;border-radius:12px;padding:14px 20px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.filter-bar{background:#fff;border-radius:10px;padding:10px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
 .search-box{flex:1;min-width:200px;position:relative}
 .search-box input{width:100%;padding:8px 14px 8px 36px;border:1px solid #ddd;border-radius:8px;font-size:13px;outline:none}
 .search-box input:focus{border-color:#1a8a6e}
@@ -109,6 +110,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hira
 .mdot-r{background:#e74c3c}
 .tbl-wrap{flex:1;overflow:auto;border:1px solid #eee;border-radius:8px;min-height:0}
 table{width:100%;border-collapse:collapse;min-width:1850px}
+/* ===== 对齐：所有列标题居中；数据列除前5列（ERP ID/部门/名称/规格/厂家）外全部居中 ===== */
+thead th{text-align:center!important}
+tbody td{text-align:center!important}
+tbody td:nth-child(1),tbody td:nth-child(2),tbody td:nth-child(3),tbody td:nth-child(4),tbody td:nth-child(5){text-align:left!important}
+/* ===== 简洁模式：压缩列宽 + 表头换行，做到不用横向拖动 ===== */
+table.simple-mode{min-width:0!important;width:100%!important}
+table.simple-mode thead th{white-space:normal!important;padding:6px 5px!important;font-size:11px!important;line-height:1.3}
+table.simple-mode tbody td{padding:6px 5px!important;font-size:12px!important}
+table.simple-mode thead th:nth-child(2),table.simple-mode tbody td:nth-child(2){width:44px!important;min-width:44px!important;max-width:44px!important}
+table.simple-mode thead th:nth-child(3),table.simple-mode tbody td:nth-child(3){width:132px!important;min-width:132px!important;max-width:132px!important}
+table.simple-mode thead th:nth-child(4),table.simple-mode tbody td:nth-child(4){width:92px!important;min-width:92px!important;max-width:92px!important}
+table.simple-mode thead th.th-turn{font-size:12px!important}
+table.simple-mode tbody td.th-turn,table.simple-mode tbody td.th-turn span{font-size:13px!important}
+/* ===== 崇州周转/天津周转：字体加大加粗 ===== */
+thead th.th-turn{font-size:14px!important;font-weight:800!important;color:#0f172a!important}
+tbody td.th-turn{font-size:15px!important;font-weight:700!important}
+tbody td.th-turn span{font-size:15px!important;font-weight:700!important;color:#111!important}
+/* ===== 简洁模式：隐藏列 + 取消前几列 sticky 避免隐藏后错位 ===== */
+table.simple-mode .sm-hide{display:none!important}
+table.simple-mode thead th{left:auto!important}
+table.simple-mode tbody td{position:static!important;left:auto!important}
+.sm-mfr{max-width:180px;min-width:180px;width:180px}
+table.simple-mode .sm-mfr{max-width:82px!important;min-width:82px!important;width:82px!important}
+/* ===== 悬停完整内容气泡 ===== */
+#cellTip{position:fixed;display:none;background:#1f2937;color:#fff;font-size:12px;line-height:1.5;padding:6px 10px;border-radius:6px;max-width:420px;white-space:normal;word-break:break-all;z-index:99999;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.22)}
 thead th{background:#f8f9fa;padding:10px 10px;font-size:12px;font-weight:600;color:#555;text-align:left;border-bottom:2px solid #eee;white-space:nowrap;position:sticky;top:0;z-index:2}
 thead th.n{text-align:right}
 thead th.c{text-align:center}
@@ -378,19 +404,17 @@ input.fsel{width:100%;min-width:0;max-width:none}
   <div class="stats-row">
     <div class="stat-card">
       <div class="stat-info">
-        <div class="stat-label"><span class="si si-g">🎯</span> 当前活动品种数</div>
-        <div class="stat-val" id="actCount">0</div>
-        <div class="stat-desc" id="actDesc">加载中...</div>
+        <div class="stat-label"><span class="si si-g">📦</span> 崇州周转低于20日</div>
+        <div class="stat-val" id="czLowCount">0</div>
+        <div class="stat-desc" id="czLowDesc">加载中...</div>
       </div>
-      <div class="ring" id="ringChart"><span id="ringVal">0</span></div>
     </div>
     <div class="stat-card">
       <div class="stat-info">
-        <div class="stat-label"><span class="si si-r">⚠</span> 风险 SKU 数量</div>
-        <div class="stat-val" id="riskCount">0</div>
-        <div class="stat-desc">覆盖比例低于70% 或 差额≤−50,000盒（库存严重不足）</div>
+        <div class="stat-label"><span class="si si-r">📦</span> 天津周转低于20日</div>
+        <div class="stat-val" id="tjLowCount">0</div>
+        <div class="stat-desc" id="tjLowDesc">加载中...</div>
       </div>
-      <div class="stat-right"><a onclick="filterRisk()">点击筛选风险项</a></div>
     </div>
   </div>
 
@@ -422,6 +446,11 @@ input.fsel{width:100%;min-width:0;max-width:none}
       <option value="">经营状态</option>
       <option value="正常">正常</option>
       <option value="预淘汰">预淘汰</option>
+    </select>
+    <select class="fsel" id="fNearExp" onchange="applyFilters()">
+      <option value="">效期情况</option>
+      <option value="是">近效期</option>
+      <option value="否">非近效期</option>
     </select>
     <select class="fsel" id="fActFb" onchange="applyFilters()">
       <option value="">能否做活动</option>
@@ -467,13 +496,13 @@ input.fsel{width:100%;min-width:0;max-width:none}
       <div>
         <div class="tbl-title">供应覆盖明细</div>
         <div class="tbl-sub">黄色列可维护；数据实时同步至云端数据库</div>
-        <div id="stockUpdateTime" style="font-size:13px;color:#999;margin-top:4px">在库库存更新时间：-</div>
       </div>
       <div class="tbl-meta">
         <button type="button" id="btnSimpleMode" onclick="toggleSimpleMode()" style="padding:4px 12px;font-size:12px;border:1px solid #d1d5db;background:#fff;color:#374151;border-radius:6px;cursor:pointer;margin-right:12px">切换简洁模式</button>
         <span style="color:#dc2626;font-weight:600">⚠️ 备货请注意25年10-12月同期销量未估算断货损失销量！</span>
         <span><span class="mdot mdot-o"></span>可修改字段</span>
         <span><span class="mdot mdot-r"></span>风险SKU</span>
+        <span id="stockUpdateTime" style="font-size:12px;color:#999;margin-right:10px">在库库存更新时间：-</span>
         <span id="totalCount">共 0 条</span>
       </div>
     </div>
@@ -486,17 +515,18 @@ input.fsel{width:100%;min-width:0;max-width:none}
           <th style="width:160px;min-width:160px">商品规格</th>
           <th>生产厂家</th>
           <th class="sm-hide">采销人员</th>
-          <th>计划人员</th>
+          <th class="sm-hide">计划人员</th>
           <th class="n">在库库存</th>
 
           <th class="n">在外库存</th>
           <th class="n">在产计划</th>
           <th class="n">总库存</th>
-          <th class="n">崇州周转</th>
+          <th class="n th-sort th-turn" onclick="toggleSort('czTurn')">崇州周转<span id="si-czTurn" class="si">⇅</span></th>
           <th class="n">崇州日销</th>
-          <th class="n">天津周转</th>
+          <th class="n th-sort th-turn" onclick="toggleSort('tjTurn')">天津周转<span id="si-tjTurn" class="si">⇅</span></th>
           <th class="n">天津日销</th>
-          <th class="c" style="width:150px;min-width:150px">品种周转变化</th>
+          <th class="n th-turn" style="min-width:60px">总周转</th>
+          <th class="c sm-hide" style="width:150px;min-width:150px">品种周转变化</th>
           <th class="n">25年10-12月同期销量</th>
           <th class="n th-sort" onclick="toggleSort('diff')">差额<span id="si-diff" class="si">⇅</span></th>
           <th class="n th-sort" onclick="toggleSort('cov')">10-12月覆盖比例<span id="si-cov" class="si">⇅</span></th>
@@ -843,7 +873,7 @@ let sortKey=null,sortDir=0;
 
 function toggleSort(key){
   if(sortKey===key){sortDir=sortDir===1?-1:(sortDir===-1?0:1)}else{sortKey=key;sortDir=1}
-  ['cov','cov2','diff'].forEach(k=>{const el=document.getElementById('si-'+k);if(el){el.textContent='⇅';el.classList.remove('sa')}});
+  ['cov','cov2','diff','czTurn','tjTurn'].forEach(k=>{const el=document.getElementById('si-'+k);if(el){el.textContent='⇅';el.classList.remove('sa')}});
   if(sortDir!==0){const el=document.getElementById('si-'+key);if(el){el.textContent=sortDir===1?'▲':'▼';el.classList.add('sa')}}
   if(sortDir===0)sortKey=null;
   applyFilters();
@@ -866,6 +896,13 @@ async function loadFromSupabase(silent){
   if(!silent){showLoading('正在从云端加载数据...');}
   try{
     let baseData=await fetchAllRows('sku_base');
+    // ===== 件装量映射（用于发货分配按整件对齐）=====
+    window.pkgMap = window.pkgMap || {};
+    try {
+      const pkgs = await fetchAllRows('sku_package');
+      (pkgs||[]).forEach(p=>{ if(p.erp_id!=null&&p.dept!=null&&p.package_qty) window.pkgMap[p.erp_id+'||'+p.dept]=Number(p.package_qty); });
+    } catch(e){ console.warn('sku_package 拉取失败（分配工具将不按整件对齐）', e); }
+    
     
     if(!baseData||baseData.length===0){
       console.log('Supabase sku_base 为空或不存在，使用内嵌数据');
@@ -892,6 +929,11 @@ async function loadFromSupabase(silent){
           (a.kind === 'planned' ? actMapP : actMapO)[a.erp_id + '||' + a.dept] = a;   // 按erp+部门区分，避免一部二部互相覆盖
         });
       } catch (e) { console.warn('sku_activity 拉取失败（不影响其他功能）', e); }
+      window.yiBuMap={};
+      try {
+        const yb = await fetchAllRows('sku_caixiao_yibu');
+        (yb||[]).forEach(y=>{ if(y.erp_id) window.yiBuMap[y.erp_id+'||'+y.dept]=y; });
+      } catch (e) { console.warn('sku_caixiao_yibu 拉取失败（不影响其他功能）', e); }
       var _t=new Date();
       var TODAY_STR=_t.getFullYear()+'-'+String(_t.getMonth()+1).padStart(2,'0')+'-'+String(_t.getDate()).padStart(2,'0');
 
@@ -943,6 +985,7 @@ async function loadFromSupabase(silent){
         const key=r.erp_id+'||'+r.dept;
         const ed=editsMap[key];
         const ao = actMapO[key] || {}, ap = actMapP[key] || {};   // 按erp+部门取，互不覆盖
+        const yb = window.yiBuMap ? (window.yiBuMap[key]||{}) : {};  // 一部采销兜底
         return {
           erpId:r.erp_id||'',
           dept:r.dept||'',
@@ -955,6 +998,8 @@ async function loadFromSupabase(silent){
           q4Sales:Number(r.q4_sales)||0,
           q1_26Sales:Q1_26_SALES[r.erp_id]||0,
           stock:Number(r.stock)||0,
+          czStock:(r.cz_stock!=null)?Number(r.cz_stock)||0:null,
+          tjStock:(r.tj_stock!=null)?Number(r.tj_stock)||0:null,
           stockUpdatedAt:r.stock_updated_at||'',
           outStock:ed?Number(ed.out_stock)||0:0,
           production:ed?Number(ed.production)||0:0,
@@ -964,14 +1009,15 @@ async function loadFromSupabase(silent){
           remark:ed?(ed.remark||''):(r.remark||''),
           editedBy:ed?(ed.edited_by||''):(r.edited_by||''),
           // —— 活动 6 字段（运营推送只读 + 采销反馈）——
-          curActs:   (ao.act_names && ao.act_end && ao.act_end < TODAY_STR) ? '' : _activeSegments(ao.act_names, ao.act_end),  // 当前活动（整条+段级过期过滤）
+          curActs:   (ao.act_names && ao.act_end && ao.act_end < TODAY_STR) ? '' : (_activeSegments(ao.act_names, ao.act_end) || yb.current_act || ''),  // 当前活动（整条+段级过期过滤；一部采销兜底）
           curTypes:  ao.act_types || '',                                    // 活动类型
-          turnText:  ao.turn_text || '',                                    // 品种周转变化
-          czTurn:    ap.days_cz != null ? ap.days_cz : (ao.days_cz != null ? ao.days_cz : ''),   // 崇州周转天数
-          tjTurn:    ap.days_tj != null ? ap.days_tj : (ao.days_tj != null ? ao.days_tj : ''),   // 天津周转天数
-          czDaily:   ap.cz_daily != null ? ap.cz_daily : (ao.cz_daily != null ? ao.cz_daily : ''),   // 崇州日销
-          tjDaily:   ap.tj_daily != null ? ap.tj_daily : (ao.tj_daily != null ? ao.tj_daily : ''),   // 天津日销
-          keyAct:    ap.key_act   || ao.key_act || '',                      // 重点活动
+          turnText:  clearZhuanbian(ao.turn_text || yb.turn_change || ''),                  // 品种周转变化（一部采销兜底；待补充占位不展示）
+          czTurn:    normTurn(ap.days_cz != null ? ap.days_cz : (ao.days_cz != null ? ao.days_cz : (yb.turn_sc!=null?yb.turn_sc:''))),   // 崇州周转天数（负值归 0）
+          tjTurn:    normTurn(ap.days_tj != null ? ap.days_tj : (ao.days_tj != null ? ao.days_tj : (yb.turn_tj!=null?yb.turn_tj:''))),   // 天津周转天数（负值归 0）
+          czDaily:   ap.cz_daily != null ? ap.cz_daily : (ao.cz_daily != null ? ao.cz_daily : (yb.q30_sc!=null?Math.round(yb.q30_sc/30*10)/10:'')),   // 崇州日销(一部采销近30÷30≈日均)
+          tjDaily:   ap.tj_daily != null ? ap.tj_daily : (ao.tj_daily != null ? ao.tj_daily : (yb.q30_tj!=null?Math.round(yb.q30_tj/30*10)/10:'')),   // 天津日销
+          keyAct:    ap.key_act || ao.key_act || yb.key_item || '',        // 重点活动
+          nearExp:   yb.near_exp ? true : false,                           // 一部近效期
           actPlan:   _filterPlanExpired(ap.act_plan  || ao.act_plan || ''),                     // 本月活动计划
           actRoad:   ap.act_road  || ao.act_road || '',                     // 活动规划
           actFb:     ed ? (ed.act_feedback || '') : '',                     // 能否做活动（你们填）
@@ -979,6 +1025,8 @@ async function loadFromSupabase(silent){
           actFbAt:   ed ? (ed.act_feedback_at  || '') : ''
         };
       });
+      // 隐藏经营状态为「淘汰」的 SKU（前端仅展示正常/预淘汰；经营状态筛选项可叠加再筛选）
+      allData = allData.filter(r => (r.status||'') !== '淘汰');
       if(!silent){hideLoading();}
       populateFilters();
       applyFilters();
@@ -1269,6 +1317,229 @@ function updateSyncStatus(status){
 }
 
 // ===== 计算函数 =====
+
+// ===== 发货分配计算 小工具 =====
+function fmtNum(v){return (v==null||isNaN(v))?0:Number(v)}
+function calcTotalTurn(r){
+  var zz = fmtNum(r.stock);
+  var cd = fmtNum(r.czDaily), td = fmtNum(r.tjDaily);
+  var czt = fmtNum(r.outStock)+fmtNum(r.production)+fmtNum(r.opsDemand);
+  var total = zz + czt;
+  if((cd + td) <= 0) return '';
+  return (total/(cd+td)).toFixed(1);
+}
+function allocFromRow(idx){
+  var r = (filtered && filtered[idx]) ? filtered[idx] : null;
+  if(!r) return;
+  var info=document.getElementById('al_prodInfo');
+  window.curPkg = (window.pkgMap||{})[r.erpId+'||'+r.dept] || 0;
+  var pkgTip = window.curPkg>0 ? ('  ·  件装量 '+window.curPkg) : '';
+  if(info){ info.textContent=(r.name||'')+'  ·  '+(r.erpId||'')+'  ·  '+(r.dept||'')+pkgTip; }
+  fillAlloc(r.czStock, r.tjStock, r.czDaily, r.tjDaily);
+  var res=document.getElementById('al_result'); if(res) res.innerHTML='';
+  openAllocTool();
+}
+function fillAlloc(czS, tjS, czD, tjD){
+  var e;
+  function setVal(id, v){
+    var el=document.getElementById(id);
+    if(el && v!=null && v!=='' && !isNaN(v)){ el.value=v; }
+  }
+  setVal('al_czStock', czS);
+  setVal('al_tjStock', tjS);
+  setVal('al_czDaily', czD);
+  setVal('al_tjDaily', tjD);
+}
+function buildAllocProductList(){
+  var sel=document.getElementById('al_product');
+  if(!sel) return;
+  var cur=sel.value; sel.innerHTML='<option value="">—— 请选择产品 ——</option>';
+  var seen={};
+  (allData||[]).forEach(function(r){
+    var key=r.erpId+'|'+r.dept;
+    if(seen[key]) return; seen[key]=1;
+    var label=(r.name||r.erpId||'')+'  ['+(r.erpId||'')+' · '+(r.dept||'')+']';
+    var opt=document.createElement('option');
+    opt.value=key; opt.textContent=label; sel.appendChild(opt);
+  });
+  if(cur && document.querySelector('#al_product option[value="'+CSS_ESC(cur)+'"]')){ sel.value=cur; }
+}
+function CSS_ESC(v){ return String(v||'').replace('"','').replace('\\',''); }
+function allocPick(){
+  var sel=document.getElementById('al_product');
+  var v=sel.value;
+  var info=document.getElementById('al_prodInfo');
+  var r=null;
+  if(v){ var p=v.split('|'); var key=p[0]; var dept=p[1];
+    (allData||[]).forEach(function(x){ if(x.erpId===key && x.dept===dept) r=x; });
+  }
+  if(info){ info.textContent = r ? (r.name||'')+'  ·  '+(r.erpId||'')+'  ·  '+(r.dept||'') : ''; }
+  if(r){
+    if(document.getElementById('al_czStock')) document.getElementById('al_czStock').value=(r.czStock!=null&&!isNaN(r.czStock)?r.czStock:'');
+    if(document.getElementById('al_tjStock')) document.getElementById('al_tjStock').value=(r.tjStock!=null&&!isNaN(r.tjStock)?r.tjStock:'');
+    if(document.getElementById('al_czDaily')) document.getElementById('al_czDaily').value=(r.czDaily!=null&&!isNaN(r.czDaily)?r.czDaily:'');
+    if(document.getElementById('al_tjDaily')) document.getElementById('al_tjDaily').value=(r.tjDaily!=null&&!isNaN(r.tjDaily)?r.tjDaily:'');
+  } else {
+    ['al_czStock','al_tjStock','al_czDaily','al_tjDaily'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  }
+}
+function openAllocTool(){
+  buildAllocProductList();
+  var el=document.getElementById('allocTool');
+  if(el){el.style.display='block';}
+}
+function openAllocTool(){
+  var el=document.getElementById('allocTool');
+  if(el){el.style.display='block';}
+}
+function closeAllocTool(){
+  var el=document.getElementById('allocTool');
+  if(el)el.style.display='none';
+}
+function calcAlloc(){
+  var Q=fmtNum(document.getElementById('al_qty').value);
+  var cs=fmtNum(document.getElementById('al_czStock').value);
+  var ts=fmtNum(document.getElementById('al_tjStock').value);
+  var cd=fmtNum(document.getElementById('al_czDaily').value);
+  var td=fmtNum(document.getElementById('al_tjDaily').value);
+  var box=document.getElementById('al_result');
+  if(Q<=0){box.innerHTML='<div style="color:#dc2626;font-weight:600">请输入发货数量</div>';return;}
+  if(cd<=0&&td<=0){box.innerHTML='<div style="color:#dc2626;font-weight:600">请至少填写一个仓库的日销</div>';return;}
+  var pkg = (window.curPkg||0)>0 ? Math.floor(window.curPkg) : 0;   // 件装量（每件盒数）
+  // gap(x) = 崇州周转 - 天津周转 - 10 ; 随 x(崇州分配)单调递增
+  // 崇州周转=(cs+x)/cd  天津周转=(ts+Q-x)/td
+  function gap(x){
+    var cz = cd>0 ? (cs+x)/cd : Infinity;
+    var tj = td>0 ? (ts+Q-x)/td : Infinity;
+    return cz - tj - 10;
+  }
+  // 二分求最小 x∈[0,Q] 使 gap(x)>0（恰好满足的临界点；x 再小就不满足）
+  var lo=0, hi=Q, best=-1;
+  if(gap(Q) <= 0){
+    best = Q;
+  } else {
+    while(lo<hi){
+      var mid=Math.floor((lo+hi)/2);
+      if(gap(mid)>0) hi=mid; else lo=mid+1;
+    }
+    best=lo;
+  }
+  var x=best, y=Q-x;
+  // 整件对齐：让崇州 x 就近取到件装量的整数倍，尽量装整件发货
+  if(pkg>0){
+    var xn=Math.floor(x/pkg)*pkg;          // 向下最近的整件盒数
+    var xu=xn+pkg;                          // 向上最近的整件盒数
+    if(xu<=Q){ x=xu; } else if(xn>=0){ x=xn; }
+    if(x>Q) x=Q;
+    y=Q-x;
+  }
+  var czT = cd>0 ? (cs+x)/cd : null;
+  var tjT = td>0 ? (ts+y)/td : null;
+  // 件数（=盒数/件装量）
+  function pcs(v){ return pkg>0 ? (Math.round(v/pkg*100)/100) : null; }
+  var html='';
+  html+='<div style="background:#f0fdfa;border:1px solid #d1fae5;border-radius:8px;padding:10px 12px">';
+  html+='<div style="font-weight:700;color:#0f766e;margin-bottom:4px">建议分配'+(pkg>0?'（按整件，件装量 '+pkg+' 盒/件）':'')+'</div>';
+  html+='<div style="display:flex;justify-content:space-between;margin:4px 0"><span style="color:#555">崇州仓：</span><b>'+x+' 盒'+(pkg>0?'（'+(x/pkg).toFixed(1)+' 件）':'')+'</b><span style="color:#999">('+ (Q>0?(x/Q*100).toFixed(0):0) +'%)</span></div>';
+  html+='<div style="display:flex;justify-content:space-between;margin:4px 0"><span style="color:#555">天津仓：</span><b>'+y+' 盒'+(pkg>0?'（'+(y/pkg).toFixed(1)+' 件）':'')+'</b><span style="color:#999">('+ (Q>0?(y/Q*100).toFixed(0):0) +'%)</span></div>';
+  if(pkg>0){
+    var totPcs=(x/pkg + y/pkg).toFixed(1);
+    html+='<div style="margin-top:4px;padding-top:4px;border-top:1px dashed #d1fae5;font-size:12px;color:#0f766e;font-weight:600">合计：'+Q+' 盒（'+totPcs+' 件）'+( (x%pkg===0)?' · 崇州已按整件对齐':'')+'</div>';
+  }
+  html+='<div style="margin-top:8px;padding-top:6px;border-top:1px dashed #d1fae5;font-size:12px;color:#555">';
+  if(czT!=null) html+='崇州周转：<b>'+czT.toFixed(1)+'</b> 天 &nbsp; ';
+  if(tjT!=null) html+='天津周转：<b>'+tjT.toFixed(1)+'</b> 天';
+  html+='</div>';
+  if(gap(Q)<=0){
+    html+='<div style="margin-top:6px;font-size:12px;color:#dc2626">⚠ 本批次数量全部给崇州仍无法满足“崇州&gt;天津+10天”，可加大发货量或调整库存/日销</div>';
+  }else if(x===0){
+    html+='<div style="margin-top:6px;font-size:12px;color:#0f766e;font-weight:600">✅ 当前已满足条件（崇州周转 > 天津周转 + 10天），本批可全部分配给天津</div>';
+  }else{
+    html+='<div style="margin-top:6px;font-size:12px;color:#0f766e;font-weight:600">✅ 崇州至少分配 '+x+' 盒可满足“崇州&gt;天津+10天”；在此基础上可继续加配崇州</div>';
+  }
+  html+='</div>';
+  box.innerHTML=html;
+}
+
+function calcAllocByDays(){
+  var D=fmtNum(document.getElementById('al_days').value);
+  var cs=fmtNum(document.getElementById('al_czStock').value);
+  var ts=fmtNum(document.getElementById('al_tjStock').value);
+  var cd=fmtNum(document.getElementById('al_czDaily').value);
+  var td=fmtNum(document.getElementById('al_tjDaily').value);
+  var box=document.getElementById('al_result');
+  if(D<=0){box.innerHTML='<div style="color:#dc2626;font-weight:600">请输入期望周转天数</div>';return;}
+  if(cd<=0&&td<=0){box.innerHTML='<div style="color:#dc2626;font-weight:600">请至少填写一个仓库的日销</div>';return;}
+  var pkg = (window.curPkg||0)>0 ? Math.floor(window.curPkg) : 0;
+  // 目标：发货后双仓周转都等于 D 天
+  // 崇州周转=(cs+x)/cd = D → x = D*cd - cs
+  // 天津周转=(ts+y)/td = D → y = D*td - ts
+  var x0 = cd>0 ? (D*cd - cs) : 0;
+  var y0 = td>0 ? (D*td - ts) : 0;
+  if(x0<0) x0=0; if(y0<0) y0=0;
+  // 整件对齐：向上取整补足到整件，保证对齐后仍达期望天数
+  var x=0,y=0;
+  if(pkg>0){
+    x = Math.ceil(x0/pkg)*pkg;
+    y = Math.ceil(y0/pkg)*pkg;
+  } else { x=x0; y=y0; }
+  var Q=x+y;
+  var czT = cd>0 ? (cs+x)/cd : null;
+  var tjT = td>0 ? (ts+y)/td : null;
+  var html='';
+  html+='<div style="background:#f0fdfa;border:1px solid #d1fae5;border-radius:8px;padding:10px 12px">';
+  html+='<div style="font-weight:700;color:#0f766e;margin-bottom:4px">按期望周转 '+D+' 天的建议分配'+(pkg>0?'（按整件，件装量 '+pkg+' 盒/件）':'')+'</div>';
+  html+='<div style="display:flex;justify-content:space-between;margin:4px 0"><span style="color:#555">崇州仓：</span><b>'+x+' 盒'+(pkg>0?'（'+(x/pkg).toFixed(1)+' 件）':'')+'</b></div>';
+  html+='<div style="display:flex;justify-content:space-between;margin:4px 0"><span style="color:#555">天津仓：</span><b>'+y+' 盒'+(pkg>0?'（'+(y/pkg).toFixed(1)+' 件）':'')+'</b></div>';
+  html+='<div style="margin-top:4px;padding-top:4px;border-top:1px dashed #d1fae5;font-size:12px;color:#0f766e;font-weight:600">建议总计：'+Q+' 盒'+(pkg>0?'（'+((x/pkg+y/pkg).toFixed(1))+' 件）':'')+'</div>';
+  html+='<div style="margin-top:8px;padding-top:6px;border-top:1px dashed #d1fae5;font-size:12px;color:#555">';
+  if(czT!=null) html+='崇州周转：<b>'+czT.toFixed(1)+'</b> 天 &nbsp; ';
+  if(tjT!=null) html+='天津周转：<b>'+tjT.toFixed(1)+'</b> 天';
+  html+='</div>';
+  if(x0<=0&&y0<=0){
+    html+='<div style="margin-top:6px;font-size:12px;color:#0f766e;font-weight:600">✅ 当前双仓库存已可满足 '+D+' 天周转，本批无需补货</div>';
+  }else{
+    html+='<div style="margin-top:6px;font-size:12px;color:#555">按此分配发货后，双仓均达 <b>'+D.toFixed(0)+'</b> 天左右周转（已按整件向上取整，会略高于目标）。</div>';
+  }
+  html+='</div>';
+  box.innerHTML=html;
+}
+
+// 悬浮工具拖动（点击面板任意空白处均可拖动）
+(function(){
+  var el=null;
+  function isControl(t){
+    if(!t||!t.tagName) return false;
+    var tag=t.tagName.toUpperCase();
+    return tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'||tag==='BUTTON'||tag==='A';
+  }
+  function initDrag(){
+    el=document.getElementById('allocTool');
+    if(!el) return;
+    var sx=0,sy=0,ex=0,ey=0,drag=false;
+    el.addEventListener('mousedown',function(e){
+      if(isControl(e.target)) return;   // 点击输入框/按钮等不触发拖动
+      // 点击的是产品信息/提示/结果等文本区域或空白 → 视为拖动手柄
+      if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+      drag=true;sx=e.clientX;sy=e.clientY;var r=el.getBoundingClientRect();ex=r.left;ey=r.top;
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove',function(e){
+      if(!drag) return;
+      var nl=ex+e.clientX-sx;
+      var nt=ey+e.clientY-sy;
+      // 边界保护：顶部不拖出视口上方，左/右不拖出视口
+      if(nt<0) nt=0;
+      var maxT=window.innerHeight-60; if(nt>maxT) nt=maxT;
+      var maxL=window.innerWidth-80; if(nl>maxL) nl=maxL;
+      if(nl<-80) nl=-80;
+      el.style.left=nl+'px';el.style.top=nt+'px';el.style.right='auto';
+    });
+    document.addEventListener('mouseup',function(){drag=false;});
+  }
+  if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',initDrag);}else{initDrag();}
+})();
+
 function calcTotal(r){return(r.stock||0)+(r.outStock||0)+(r.production||0)+(r.opsDemand||0)}
 function calcCov(r){const t=calcTotal(r);return r.q4Sales>0?(t/r.q4Sales*100):0}
 function calcCov2(r){const t=calcTotal(r);const s=(r.q4Sales||0)+(r.q1_26Sales||0);return s>0?(t/s*100):0}
@@ -1281,15 +1552,29 @@ function covClass(c){if(c<50)return'low';if(c<80)return'med';if(c<100)return'goo
 function updateStats(){
   const src=filtered.length>0?filtered:allData;
   const total=src.length;
-  const active=src.filter(r=>r.curActs&&String(r.curActs).trim()).length;
-  const rate=total>0?(active/total*100):0;
-  const risks=src.filter(isRisk).length;
-  document.getElementById('actCount').textContent=active.toLocaleString();
-  document.getElementById('actDesc').textContent='当前有活动 '+active.toLocaleString()+' 个品种，共 '+total.toLocaleString()+' 个，占比 '+rate.toFixed(1)+'%';
-  document.getElementById('riskCount').textContent=risks.toLocaleString();
-  const deg=Math.round(rate/100*360);
-  document.getElementById('ringChart').style.background='conic-gradient(#1a8a6e 0deg '+deg+'deg, #e8f8f2 '+deg+'deg 360deg)';
-  document.getElementById('ringVal').textContent=Math.round(rate)+'%';
+  // 统计周转天数 < 20 的品种数（空值/非数字不计）
+  function countLowTurn(key){
+    let n=0;
+    for(let i=0;i<src.length;i++){
+      const v=src[i][key];
+      if(v==null||v==='') continue;
+      const num=Number(v);
+      if(!isNaN(num)&&num<20) n++;
+    }
+    return n;
+  }
+  const czLow=countLowTurn('czTurn');
+  const tjLow=countLowTurn('tjTurn');
+  const czRate=total>0?(czLow/total*100):0;
+  const tjRate=total>0?(tjLow/total*100):0;
+  const czEl=document.getElementById('czLowCount');
+  if(czEl) czEl.textContent=czLow.toLocaleString();
+  const czD=document.getElementById('czLowDesc');
+  if(czD) czD.textContent='崇州仓周转天数 < 20 日 · 占 '+total.toLocaleString()+' 个品种的 '+czRate.toFixed(1)+'%';
+  const tjEl=document.getElementById('tjLowCount');
+  if(tjEl) tjEl.textContent=tjLow.toLocaleString();
+  const tjD=document.getElementById('tjLowDesc');
+  if(tjD) tjD.textContent='天津仓周转天数 < 20 日 · 占 '+total.toLocaleString()+' 个品种的 '+tjRate.toFixed(1)+'%';
 }
 
 function populateFilters(){
@@ -1316,6 +1601,7 @@ function applyFilters(){
   const covMin=document.getElementById('fCovMin').value;
   const covMax=document.getElementById('fCovMax').value;
   const biz=document.getElementById('fBiz').value;
+  const nearExp=document.getElementById('fNearExp')?document.getElementById('fNearExp').value:'';
   const cap=document.getElementById('fCapacity')?document.getElementById('fCapacity').value:'';
   const actFb=document.getElementById('fActFb')?document.getElementById('fActFb').value:'';
   const actStatus=document.getElementById('fActStatus')?document.getElementById('fActStatus').value:'';
@@ -1344,6 +1630,8 @@ function applyFilters(){
     if(buyer&&r.buyer!==buyer)return false;
     if(mfr&&!mf.includes(mfr))return false;
     if(biz&&r.status!==biz)return false;
+    if(nearExp==='是'&&!r.nearExp)return false;
+    if(nearExp==='否'&&r.nearExp)return false;
     if(actFb==='能做'&&r.actFb!=='能做')return false;
     if(actFb==='待定'&&r.actFb!=='待定')return false;
     if(actFb==='不能做'&&r.actFb!=='不能做')return false;
@@ -1414,6 +1702,20 @@ function applyFilters(){
         if(na&&!nb)return 1;if(!na&&nb)return -1;if(na&&nb)return 0;
         return sortDir*(calcCov2(a)-calcCov2(b));
       }
+      if(sortKey==='czTurn'){
+        const va=Number(a.czTurn), vb=Number(b.czTurn);
+        const na=(a.czTurn==null||a.czTurn===''||isNaN(va));
+        const nb=(b.czTurn==null||b.czTurn===''||isNaN(vb));
+        if(na&&!nb)return 1;if(!na&&nb)return -1;if(na&&nb)return 0;
+        return sortDir*(va-vb);
+      }
+      if(sortKey==='tjTurn'){
+        const va=Number(a.tjTurn), vb=Number(b.tjTurn);
+        const na=(a.tjTurn==null||a.tjTurn===''||isNaN(va));
+        const nb=(b.tjTurn==null||b.tjTurn===''||isNaN(vb));
+        if(na&&!nb)return 1;if(!na&&nb)return -1;if(na&&nb)return 0;
+        return sortDir*(va-vb);
+      }
       if(sortKey==='diff')return sortDir*(calcDiff(a)-calcDiff(b));
       return 0;
     });
@@ -1423,7 +1725,7 @@ function applyFilters(){
   render();
 }
 function resetFilters(){
-  ['searchInput','fDept','fPlanner','fBuyer','fMfr','fCovMin','fCovMax','fCapacity','fBiz','fActFb','fActStatus','fCurAct','fTurn'].forEach(id=>{document.getElementById(id).value=''});
+  ['searchInput','fDept','fPlanner','fBuyer','fMfr','fCovMin','fCovMax','fCapacity','fBiz','fNearExp','fActFb','fActStatus','fCurAct','fTurn'].forEach(id=>{document.getElementById(id).value=''});
   filtered=[...allData];cp=1;updateStats();render();
 }
 function filterRisk(){
@@ -1462,20 +1764,21 @@ function render(){
     return '<tr class="'+(risk?'risk':'')+'">'
       +'<td class="sm-hide" style="font-size:12px;color:#888">'+r.erpId+'</td>'
       +'<td><span class="db '+dpc+'">'+r.dept+'</span></td>'
-      +'<td><div class="pname">'+escHtml(r.name)+'</div><div class="pstatus '+stCls+'">'+r.status+actKeyTag(r)+actCurTag(r)+'</div></td>'
-      +'<td style="font-size:12px;color:#666">'+escHtml(r.spec||'')+'</td>'
-      +'<td class="sm-mfr" data-full="'+escHtml(r.manufacturer||'')+'" style="font-size:12px;color:#666;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml(r.manufacturer||'')+'">'+escHtml(((!simpleMode||(r.manufacturer||'').length<=6)?(r.manufacturer||''):(r.manufacturer||'').slice(0,6)+'…'))+'</td>'
+      +'<td><div class="pname" style="cursor:pointer;color:#111;font-weight:600" onclick="allocFromRow('+idx+')" title="点击打开发货分配工具">'+escHtml(r.name)+'</div><div class="pstatus '+stCls+'">'+r.status+actKeyTag(r)+actCurTag(r)+nearExpTag(r)+'</div></td>'
+      +'<td class="sm-spec" data-full="'+escHtml(r.spec||'')+'" style="font-size:12px;color:#666">'+escHtml(r.spec||'')+'</td>'
+      +'<td class="sm-mfr" data-full="'+escHtml(r.manufacturer||'')+'" style="font-size:12px;color:#666;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(((!simpleMode||(r.manufacturer||'').length<=5)?(r.manufacturer||''):(r.manufacturer||'').slice(0,5)+'…'))+'</td>'
       +'<td class="sm-hide">'+escHtml(r.buyer||'')+'</td>'
-      +'<td>'+escHtml(r.planner||'')+'</td>'
+      +'<td class="sm-hide">'+escHtml(r.planner||'')+'</td>'
       +'<td class="n'+editClass+'"'+editAttr+' data-i="'+idx+'" data-f="stock">'+(r.stock||0).toLocaleString()+'</td>'
       
       +'<td class="n'+editClass+'"'+editAttr+' data-i="'+idx+'" data-f="outStock">'+(r.outStock||0).toLocaleString()+'</td>'
       +'<td class="n'+editClass+'"'+editAttr+' data-i="'+idx+'" data-f="production">'+(r.production||0).toLocaleString()+'</td>'
       +'<td class="n" style="font-weight:600">'+t.toLocaleString()+'</td>'
-      +'<td class="n">'+(r.czTurn!=null&&r.czTurn!==''?'<span style="color:#555">'+r.czTurn+'</span>':'')+'</td>'
+      +'<td class="n th-turn">'+(r.czTurn!=null&&r.czTurn!==''?'<span style="color:#111">'+r.czTurn+'</span>':'')+'</td>'
       +'<td class="n">'+(r.czDaily!=null&&r.czDaily!==''?'<span style="color:#555">'+r.czDaily+'</span>':'')+'</td>'
-      +'<td class="n">'+(r.tjTurn!=null&&r.tjTurn!==''?'<span style="color:#555">'+r.tjTurn+'</span>':'')+'</td>'
+      +'<td class="n th-turn">'+(r.tjTurn!=null&&r.tjTurn!==''?'<span style="color:#111">'+r.tjTurn+'</span>':'')+'</td>'
       +'<td class="n">'+(r.tjDaily!=null&&r.tjDaily!==''?'<span style="color:#555">'+r.tjDaily+'</span>':'')+'</td>'
+      +'<td class="n th-turn"><span style="color:#111">'+calcTotalTurn(r)+'</span></td>'
       +actTurnTd(r)
       +'<td class="n">'+r.q4Sales.toLocaleString()+'</td>'
       +'<td class="n"><span class="dif '+dc+'">'+(d>0?'+':'')+d.toLocaleString()+'</span></td>'
@@ -1496,41 +1799,55 @@ function render(){
 }
 
 var simpleMode=false;
-function toggleSimpleMode(){
-  simpleMode=!simpleMode;
-  var els=document.querySelectorAll('th.sm-hide, td.sm-hide');
-  for(var i=0;i<els.length;i++){
-    if(simpleMode){
-      els[i].style.display='none';
-      els[i].style.visibility='collapse';
-      els[i].style.width='0';
-      els[i].style.minWidth='0';
-      els[i].style.maxWidth='0';
-      els[i].style.padding='0';
-      els[i].style.margin='0';
-      els[i].style.overflow='hidden';
-    } else {
-      els[i].style.display='';
-      els[i].style.visibility='';
-      els[i].style.width='';
-      els[i].style.minWidth='';
-      els[i].style.maxWidth='';
-      els[i].style.padding='';
-      els[i].style.margin='';
-      els[i].style.overflow='';
-    }
-  }
-  var mfrs=document.querySelectorAll('td.sm-mfr');
-  for(var j=0;j<mfrs.length;j++){ var full=mfrs[j].getAttribute('data-full')||''; mfrs[j].textContent=(!simpleMode||full.length<=6)?full:(full.slice(0,6)+'…'); }
+function applySimpleModeClass(){
   var tbl=document.querySelector('.wrap table')||document.querySelector('table');
-  if(tbl) tbl.style.minWidth=simpleMode?'900px':'1850px';
+  if(tbl){
+    if(simpleMode){ tbl.classList.add('simple-mode'); tbl.style.minWidth='0'; }
+    else { tbl.classList.remove('simple-mode'); tbl.style.minWidth='1850px'; }
+  }
   var btn=document.getElementById('btnSimpleMode');
   if(btn) btn.textContent=simpleMode?'切换完整模式':'切换简洁模式';
+}
+function toggleSimpleMode(){
+  simpleMode=!simpleMode;
   try{ localStorage.setItem('q4_simple_mode', simpleMode?'1':'0'); }catch(e){}
+  applySimpleModeClass();
+  if(typeof render==='function') render();
 }
 function initSimpleMode(){
-  try{ var v=localStorage.getItem('q4_simple_mode'); if(v==='1') toggleSimpleMode(); }catch(e){}
+  try{ var v=localStorage.getItem('q4_simple_mode'); if(v==='1'){ simpleMode=true; applySimpleModeClass(); if(typeof render==='function') render(); } }catch(e){}
 }
+
+// ===== 悬停显示完整内容气泡（规格 / 生产厂家）=====
+(function(){
+  var tip=null;
+  function getTip(){ if(!tip) tip=document.getElementById('cellTip'); return tip; }
+  function showTip(el){
+    var t=getTip(); if(!t) return;
+    var full=el.getAttribute('data-full')||'';
+    if(!full || full.length<=0) return;
+    t.textContent=full;
+    t.style.display='block';
+    var r=el.getBoundingClientRect();
+    var tw=t.offsetWidth, th=t.offsetHeight;
+    var left=r.left; if(left+tw>window.innerWidth-8) left=window.innerWidth-tw-8; if(left<8) left=8;
+    var top=r.bottom+6;
+    if(top+th>window.innerHeight-8) top=r.top-th-6;
+    if(top<8) top=8;
+    t.style.left=left+'px'; t.style.top=top+'px';
+  }
+  function hideTip(){ var t=getTip(); if(t) t.style.display='none'; }
+  document.addEventListener('mouseover',function(e){
+    var el=e.target;
+    if(el && el.closest && (el.closest('.sm-spec')||el.closest('.sm-mfr'))){ showTip(el.closest('.sm-spec')||el.closest('.sm-mfr')); }
+  });
+  document.addEventListener('mouseout',function(e){
+    var el=e.target;
+    if(el && el.closest && (el.closest('.sm-spec')||el.closest('.sm-mfr'))){ hideTip(); }
+  });
+  document.addEventListener('scroll',hideTip,true);
+})();
+
 function updateStockTimeDisplay(){
   const el=document.getElementById('stockUpdateTime');if(!el)return;
   const latest=allData.map(r=>r.stockUpdatedAt).filter(Boolean).sort().pop();
@@ -1582,10 +1899,24 @@ function updSel(el){
   }
 }
 // ===== 活动 6 字段渲染（前5列只读：运营每日推送 sku_activity，按ERP ID匹配；第6列采销可填） =====
+// 周转变化列：不展示「待补充（需月初周转历史…）」占位
+function clearZhuanbian(v){
+  if(!v) return '';
+  v=String(v);
+  if(v.indexOf('待补充')===0) return '';
+  return v;
+}
+// 周转天数归一化：分仓库存为负（盘亏/超卖/调拨未入账）时源系统会算出负周转，业务上统一按 0 处理
+function normTurn(v){
+  if(v==null||v==='') return '';
+  var n=Number(v);
+  if(isNaN(n)) return '';
+  return n<0?0:n;
+}
 function actTurnTd(r){
-  if(!r.turnText) return '<td class="c"></td>';
+  if(!r.turnText) return '<td class="c sm-hide"></td>';
   var t = r.turnText.split('(提醒')[0];
-  return '<td class="c"><span style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:1px 7px;font-size:12px;color:#c2410c;white-space:nowrap" title="'+escHtml(r.turnText)+'">🔔'+escHtml(t)+'</span></td>';
+  return '<td class="c sm-hide"><span style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:1px 7px;font-size:12px;color:#c2410c;white-space:nowrap" title="'+escHtml(r.turnText)+'">🔔'+escHtml(t)+'</span></td>';
 }
 function actCurTag(r){
   if(!r.curActs) return '';
@@ -1596,6 +1927,10 @@ function actCurTag(r){
 function actKeyTag(r){
   if(!r.keyAct) return '';
   return '<span style="display:inline-block;margin-left:6px;padding:1px 8px;border-radius:10px;font-size:11px;line-height:17px;background:#fff1e6;border:1px solid #ffd6a8;color:#d4380d;font-weight:600">'+escHtml(r.keyAct)+'</span>';
+}
+function nearExpTag(r){
+  if(!r.nearExp) return '';
+  return '<span style="display:inline-block;margin-left:6px;padding:1px 8px;border-radius:10px;font-size:11px;line-height:17px;background:#fffbe6;border:1px solid #ffe58f;color:#ad6800;font-weight:600">近效期</span>';
 }
 function actPlanTd(r){
   return '<td class="c" style="font-size:12px;color:#555;white-space:nowrap">'+escHtml(r.actPlan||'')+'</td>';
@@ -1685,12 +2020,12 @@ function exportMine(){
   if(!currentPlanner){ toast('未选择计划人员'); return; }
   var list = allData.filter(function(r){ return r.planner===currentPlanner; });
   if(!list.length){ toast('没有找到「'+currentPlanner+'」负责的产品数据'); return; }
-  var cols=['ERP编号','部门','品种名称','规格','厂家','采销','计划人员','在库','在外','在产','总库存','崇州周转','崇州日销','天津周转','天津日销','品种周转变化','10-12月销量','差额','10-12月覆盖率%','10-3月销量','10-3月覆盖率%','活动规划','能否做活动','运营侧需求','是否满足产能','计划日期','备注'];
+  var cols=['ERP编号','部门','品种名称','规格','厂家','采销','计划人员','在库','在外','在产','总库存','崇州周转','崇州日销','天津周转','天津日销','总周转','品种周转变化','10-12月销量','差额','10-12月覆盖率%','10-3月销量','10-3月覆盖率%','活动规划','能否做活动','运营侧需求','是否满足产能','计划日期','备注'];
   var rows=list.map(function(r){
     return [
       r.erpId, r.dept, r.name, r.spec, r.manufacturer, r.buyer, r.planner,
       r.stock||0, r.outStock||0, r.production||0,
-      calcTotal(r), r.czTurn||'', r.czDaily||'', r.tjTurn||'', r.tjDaily||'',
+      calcTotal(r), (r.czTurn!=null?r.czTurn:''), r.czDaily||'', (r.tjTurn!=null?r.tjTurn:''), r.tjDaily||'', calcTotalTurn(r),
       r.turnText||'',
       r.q4Sales||0, calcDiff(r), calcCov(r).toFixed(1),
       (r.q4Sales||0)+(r.q1_26Sales||0), calcCov2(r).toFixed(1),
@@ -1937,5 +2272,49 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.cla
   </div>
 </div>
 
+<div id="allocTool" style="display:none;position:fixed;top:70px;right:18px;z-index:9999;width:460px;max-height:86vh;overflow:auto;background:#fff;border:1px solid #d1d5db;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.18);font-size:13px;color:#111">
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#0f766e;color:#fff;border-radius:12px 12px 0 0">
+    <div style="font-weight:700;font-size:14px">📦 发货分配计算</div>
+    <button type="button" onclick="closeAllocTool()" style="border:none;background:none;font-size:16px;color:#fff;cursor:pointer;line-height:1">✕</button>
+  </div>
+  <div style="padding:12px 14px">
+    <div style="margin-bottom:10px;font-size:12px;color:#dc2626;background:#fef2f2;padding:8px 10px;border-radius:6px;border:1px solid #fecaca;font-weight:600">⚠ 依据近30日日销做发货分配，仅做参考，请注意考虑断货、活动造成的销量影响。</div>
+    <div id="al_prodInfo" style="margin-bottom:10px;font-size:13px;color:#0f766e;font-weight:700"></div>
+    <div style="margin-bottom:10px;font-size:12px;color:#555;background:#f0fdfa;padding:8px 10px;border-radius:6px;border-left:3px solid #0f766e">按「崇州周转 &gt; 天津周转 + 10天」给出建议分配。</div>
+    <div style="margin-bottom:6px;font-size:14px;font-weight:700;color:#0f766e">发货数量（盒）</div>
+    <input id="al_qty" type="number" min="0" style="width:100%;padding:8px 10px;font-size:15px;border:1.5px solid #0f766e;border-radius:6px;box-sizing:border-box" placeholder="如 5000">
+    <div style="margin:14px 0 6px;font-size:14px;font-weight:700;color:#0f766e">按期望周转天数分配</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input id="al_days" type="number" min="0" style="flex:1;padding:8px 10px;font-size:15px;border:1.5px solid #0f766e;border-radius:6px;box-sizing:border-box" placeholder="如 30">
+      <span style="font-size:13px;color:#555">天</span>
+      <button type="button" onclick="calcAllocByDays()" style="padding:8px 14px;background:#0f766e;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer">按天数算</button>
+    </div>
+    <div style="margin-top:6px;font-size:12px;color:#888">填写期望周转天数，结果给出满足「双仓均为该周转天数」的建议分配（自动按整件）。</div>
+    <div style="display:flex;gap:10px;margin-top:12px">
+      <div style="flex:1">
+        <div style="font-weight:600;margin-bottom:4px">崇州仓 在库库存</div>
+        <input id="al_czStock" type="text" readonly style="width:100%;padding:6px 8px;border:1px solid #e5e7eb;border-radius:5px;background:#f9fafb;box-sizing:border-box;color:#555">
+      </div>
+      <div style="flex:1">
+        <div style="font-weight:600;margin-bottom:4px">天津仓 在库库存</div>
+        <input id="al_tjStock" type="text" readonly style="width:100%;padding:6px 8px;border:1px solid #e5e7eb;border-radius:5px;background:#f9fafb;box-sizing:border-box;color:#555">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:12px">
+      <div style="flex:1">
+        <div style="font-weight:600;margin-bottom:4px">崇州仓 日销</div>
+        <input id="al_czDaily" type="text" readonly style="width:100%;padding:6px 8px;border:1px solid #e5e7eb;border-radius:5px;background:#f9fafb;box-sizing:border-box;color:#555">
+      </div>
+      <div style="flex:1">
+        <div style="font-weight:600;margin-bottom:4px">天津仓 日销</div>
+        <input id="al_tjDaily" type="text" readonly style="width:100%;padding:6px 8px;border:1px solid #e5e7eb;border-radius:5px;background:#f9fafb;box-sizing:border-box;color:#555">
+      </div>
+    </div>
+    <div style="margin-top:14px;text-align:right">
+      <button type="button" onclick="calcAlloc()" style="padding:9px 22px;font-size:13px;font-weight:600;background:#0f766e;color:#fff;border:none;border-radius:6px;cursor:pointer">计算建议</button>
+    </div>
+    <div id="al_result" style="margin-top:12px"></div>
+  </div>
+</div><div id="cellTip"></div>
 </body>
 </html>
