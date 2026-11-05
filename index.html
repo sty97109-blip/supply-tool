@@ -519,6 +519,21 @@ input.fsel{width:100%;min-width:0;max-width:none}
   thead th:nth-child(3){position:sticky!important;top:0!important;left:46px!important;z-index:11!important}
   thead th:nth-child(2){position:sticky!important;top:0!important;left:0!important;z-index:12!important}
 }
+
+@media screen and (max-width: 768px){
+  /* --- 列调整 v6：显示双仓日销，隐藏差额与覆盖比例 --- */
+  thead th:nth-child(13), tbody td:nth-child(13),
+  thead th:nth-child(15), tbody td:nth-child(15){
+    display:table-cell!important;
+  }
+  thead th:nth-child(13), tbody td:nth-child(13){min-width:58px!important}
+  thead th:nth-child(15), tbody td:nth-child(15){min-width:58px!important}
+  thead th:nth-child(19), tbody td:nth-child(19),
+  thead th:nth-child(20), tbody td:nth-child(20),
+  thead th:nth-child(22), tbody td:nth-child(22){
+    display:none!important;
+  }
+}
 </style>
 </head>
 <body>
