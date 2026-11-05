@@ -18,6 +18,14 @@
 <meta http-equiv="Expires" content="0">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1a8a6e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="供应覆盖">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
 <title>四季度供应覆盖管理工具</title>
 <script>
 /**
@@ -2316,5 +2324,15 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.cla
     <div id="al_result" style="margin-top:12px"></div>
   </div>
 </div><div id="cellTip"></div>
+<script>
+(function(){
+  if(!('serviceWorker' in navigator)) return;
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('./sw.js', {scope:'./'}).catch(function(e){
+      console.warn('SW register failed:', e && e.message);
+    });
+  });
+})();
+</script>
 </body>
 </html>
