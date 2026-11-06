@@ -619,7 +619,7 @@ input.fsel{width:100%;min-width:0;max-width:none}
     </div>
     <button class="btn-h btn-imp" onclick="document.getElementById('fileInput').click()">↑ 导入在外/在产</button>
     <button class="btn-h btn-dl" onclick="downloadTemplate()">⬇ 导入模板下载</button>
-    <button class="btn-h btn-dl" onclick="exportMine()">⬇ 导出我的数据</button>
+    <button class="btn-h btn-dl" id="btnExport" onclick="exportMine()">⬇ 导出我的数据</button>
     <button class="btn-h btn-guide" onclick="openGuide()">📋 操作流程图</button>
     <button class="btn-h btn-def" onclick="openDef()">📖 口径解释</button>
     <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="importStock(event)">
@@ -704,6 +704,8 @@ input.fsel{width:100%;min-width:0;max-width:none}
       <option value="捡漏专区">捡漏专区</option>
       <option value="主题专区">主题专区</option>
       <option value="满返专区">满返专区</option>
+      <option value="秒杀专区">秒杀专区</option>
+      <option value="推荐加入活动">推荐加入活动</option>
       <option value="未购进">未购进</option>
     </select>
     <select class="fsel" id="fTurn" onchange="applyFilters()">
@@ -917,6 +919,13 @@ function applyUserRole(){
     var sub = document.querySelector('.header-sub');
     if(sub) sub.textContent = '管理员 · 仅可编辑本人负责的产品';
   }
+  // 导出按钮：运营账号导出全部人员数据，其他角色导出本人数据
+  var btnE = document.getElementById('btnExport');
+  if(btnE){
+    var _isOps = (userRole==='operator') || currentPlanner==='运营';
+    btnE.textContent = _isOps ? '⬇ 导出全部数据' : '⬇ 导出我的数据';
+    btnE.title = _isOps ? '导出所有计划人员的全部品种数据' : '导出本人负责的品种数据';
+  }
   // 重置按钮：仅管理员且已选择具体计划人员时显示
   var btnR = document.getElementById('btnResetActFb');
   if(btnR){
@@ -986,7 +995,7 @@ function _arCollect(){
   var out = [];
   (allData||[]).forEach(function(r){
     if(r.planner!==currentPlanner) return;
-    if(!r.actRoad) return;                    // 活动规划列必须有内容
+    if(!r.actRoad||r.actRoad===r.actRoadRec) return;   // 活动规划列必须有内容；仅有「推荐加入活动」标记不算
     var fb=(r.actFb||'').trim();
     if(fb==='能做'||fb==='待定'||fb==='不能做') return; // 已填写
     out.push(r);
@@ -1106,28 +1115,65 @@ function toggleSort(key){
 }
 
 // ===== 从 Supabase 加载数据 =====
-async function fetchAllRows(table){
-  let all=[],off=0,batch=1000;
-  while(true){
-    let {data,error}=await sb.from(table).select('*').range(off,off+batch-1);
-    if(error||!data||data.length===0)break;
-    all=all.concat(data);
-    if(data.length<batch)break;
-    off+=batch;
-    if(off>=8000)break;
+async function fetchAllRows(table, cols){
+  const sel0=(cols&&cols.length)?cols:'*';
+  const batch=1000;
+  // 先取总行数（head 请求，只返回计数、不返回数据，很轻）
+  let total=-1;
+  try{
+    const cr=await sb.from(table).select(sel0,{count:'exact',head:true});
+    if(!cr.error && typeof cr.count==='number') total=cr.count;
+  }catch(e){}
+  const serial=async function(sel){
+    let all=[],off=0,s=sel;
+    while(true){
+      let {data,error}=await sb.from(table).select(s).range(off,off+batch-1);
+      if(error){
+        if(off===0&&s!=='*'){ console.warn('['+table+'] 指定列查询失败，降级为全列查询：'+(error.message||error)); s='*'; all=[]; continue; }
+        console.warn('['+table+'] 查询失败：'+(error.message||error)); break;
+      }
+      if(!data||data.length===0)break;
+      all=all.concat(data);
+      if(data.length<batch)break;
+      off+=batch;
+      if(off>=20000)break;
+    }
+    return all;
+  };
+  // 行数未知、只有一页、或页数过多时走串行，避免打爆并发
+  if(total<0 || total<=batch || total>batch*20) return await serial(sel0);
+  const pages=Math.ceil(total/batch);
+  const reqs=[];
+  for(let i=0;i<pages;i++) reqs.push(sb.from(table).select(sel0).range(i*batch,i*batch+batch-1));
+  let rs;
+  try{ rs=await Promise.all(reqs); }catch(e){ console.warn('['+table+'] 并行分页异常，降级为串行',e); return await serial(sel0); }
+  let all=[],failed=false;
+  rs.forEach(function(r){ if(r.error) failed=true; else if(r.data&&r.data.length) all=all.concat(r.data); });
+  if(failed){ console.warn('['+table+'] 并行分页有失败，降级为串行'); return await serial(sel0); }
+  // 并发写入导致总数变大时，补拉尾部
+  if(all.length<total){
+    try{
+      const tr=await sb.from(table).select(sel0).range(all.length,total-1);
+      if(!tr.error && tr.data && tr.data.length) all=all.concat(tr.data);
+    }catch(e){}
   }
   return all;
 }
 async function loadFromSupabase(silent){
   if(!silent){showLoading('正在从云端加载数据...');}
   try{
-    let baseData=await fetchAllRows('sku_base');
+    // 只取前端实际用到的列；5 张表并行拉取（原先串行，总耗时是 5 个请求相加）
+    const _ld = await Promise.all([
+      fetchAllRows('sku_base', 'erp_id,dept,name,spec,manufacturer,buyer,planner,status,q4_sales,stock,cz_stock,tj_stock,stock_updated_at'),
+      fetchAllRows('sku_package', 'erp_id,dept,package_qty').catch(function(e){ console.warn('sku_package 拉取失败（分配工具将不按整件对齐）', e); return []; }),
+      fetchAllRows('sku_edits', 'erp_id,dept,out_stock,production,capacity_satisfied,plan_date,remark,edited_by,act_feedback,act_feedback_note,act_feedback_at'),
+      fetchAllRows('sku_activity', 'erp_id,dept,kind,act_names,act_end,act_types,turn_text,days_cz,days_tj,cz_daily,tj_daily,key_act,act_plan,act_road').catch(function(e){ console.warn('sku_activity 拉取失败（不影响其他功能）', e); return []; }),
+      fetchAllRows('sku_caixiao_yibu', 'erp_id,dept,current_act,turn_change,turn_sc,turn_tj,q30_sc,q30_tj,key_item,near_exp').catch(function(e){ console.warn('sku_caixiao_yibu 拉取失败（不影响其他功能）', e); return []; })
+    ]);
+    let baseData=_ld[0];
     // ===== 件装量映射（用于发货分配按整件对齐）=====
     window.pkgMap = window.pkgMap || {};
-    try {
-      const pkgs = await fetchAllRows('sku_package');
-      (pkgs||[]).forEach(p=>{ if(p.erp_id!=null&&p.dept!=null&&p.package_qty) window.pkgMap[p.erp_id+'||'+p.dept]=Number(p.package_qty); });
-    } catch(e){ console.warn('sku_package 拉取失败（分配工具将不按整件对齐）', e); }
+    (_ld[1]||[]).forEach(p=>{ if(p.erp_id!=null&&p.dept!=null&&p.package_qty) window.pkgMap[p.erp_id+'||'+p.dept]=Number(p.package_qty); });
     
     
     if(!baseData||baseData.length===0){
@@ -1137,7 +1183,7 @@ async function loadFromSupabase(silent){
       seedSupabase();
     }else{
       supabaseReady=true;
-      let editsData=await fetchAllRows('sku_edits');
+      let editsData=_ld[2];
       const editsMap={};
       if(editsData&&editsData.length>0){
         editsData.forEach(e=>{
@@ -1147,17 +1193,19 @@ async function loadFromSupabase(silent){
       }
       // 合并数据
       // ===== 运营推送的活动数据：按商品ERP ID匹配（ongoing=进行中活动/周转，planned=重点活动/计划/规划）=====
-      let actMapO = {}, actMapP = {};
+      let actMapO = {}, actMapP = {}, actMapR = {};
       try {
-        const acts = await fetchAllRows('sku_activity');
+        const acts = _ld[3];
         (acts || []).forEach(a => {
           if (a.dept && a.dept !== '二部' && a.dept !== '一部') return;   // 接二部+一部运营推送
-          (a.kind === 'planned' ? actMapP : actMapO)[a.erp_id + '||' + a.dept] = a;   // 按erp+部门区分，避免一部二部互相覆盖
+          const _k = a.erp_id + '||' + a.dept;
+          if (a.kind === 'recommend') { actMapR[_k] = a; return; }   // 计划人员「推荐加入活动」标记，独立存放，不混入进行中活动
+          (a.kind === 'planned' ? actMapP : actMapO)[_k] = a;   // 按erp+部门区分，避免一部二部互相覆盖
         });
       } catch (e) { console.warn('sku_activity 拉取失败（不影响其他功能）', e); }
       window.yiBuMap={};
       try {
-        const yb = await fetchAllRows('sku_caixiao_yibu');
+        const yb = _ld[4];
         (yb||[]).forEach(y=>{ if(y.erp_id) window.yiBuMap[y.erp_id+'||'+y.dept]=y; });
       } catch (e) { console.warn('sku_caixiao_yibu 拉取失败（不影响其他功能）', e); }
       var _t=new Date();
@@ -1210,7 +1258,7 @@ async function loadFromSupabase(silent){
       allData=baseData.map(r=>{
         const key=r.erp_id+'||'+r.dept;
         const ed=editsMap[key];
-        const ao = actMapO[key] || {}, ap = actMapP[key] || {};   // 按erp+部门取，互不覆盖
+        const ao = actMapO[key] || {}, ap = actMapP[key] || {}, ar = actMapR[key] || {};   // 按erp+部门取，互不覆盖
         const yb = window.yiBuMap ? (window.yiBuMap[key]||{}) : {};  // 一部采销兜底
         return {
           erpId:r.erp_id||'',
@@ -1245,7 +1293,8 @@ async function loadFromSupabase(silent){
           keyAct:    ap.key_act || ao.key_act || yb.key_item || '',        // 重点活动
           nearExp:   yb.near_exp ? true : false,                           // 一部近效期
           actPlan:   _filterPlanExpired(ap.act_plan  || ao.act_plan || ''),                     // 本月活动计划
-          actRoad:   ap.act_road  || ao.act_road || '',                     // 活动规划
+          actRoad:   ap.act_road  || ao.act_road || ar.act_road || '',      // 活动规划（运营排期优先，其次计划人员推荐）
+          actRoadRec: ar.act_road || '',                                    // 计划人员「推荐加入活动」标记
           actFb:     ed ? (ed.act_feedback || '') : '',                     // 能否做活动（你们填）
           actFbNote: ed ? (ed.act_feedback_note || '') : '',
           actFbAt:   ed ? (ed.act_feedback_at  || '') : ''
@@ -1632,6 +1681,7 @@ function calcAlloc(){
   if(Q<=0){box.innerHTML='<div style="color:#dc2626;font-weight:600">请输入发货数量</div>';return;}
   if(cd<=0&&td<=0){box.innerHTML='<div style="color:#dc2626;font-weight:600">请至少填写一个仓库的日销</div>';return;}
   var pkg = (window.curPkg||0)>0 ? Math.floor(window.curPkg) : 0;   // 件装量（每件盒数）
+  var MAXT = 90;   // 双仓周转健康线：两仓都低于 90 天才算健康
   // gap(x) = 崇州周转 - 天津周转 - 10 ; 随 x(崇州分配)单调递增
   // 崇州周转=(cs+x)/cd  天津周转=(ts+Q-x)/td
   function gap(x){
@@ -1639,7 +1689,32 @@ function calcAlloc(){
     var tj = td>0 ? (ts+Q-x)/td : Infinity;
     return cz - tj - 10;
   }
-  // 二分求最小 x∈[0,Q] 使 gap(x)>0（恰好满足的临界点；x 再小就不满足）
+  // 给定崇州分配 x0，做区间/整件对齐后返回 {x,y,czT,tjT}
+  function settle(x0){
+    var xx=x0;
+    if(!isFinite(xx)) xx=0;
+    if(xx<0) xx=0;
+    if(xx>Q) xx=Q;
+    if(pkg>0){
+      var xn=Math.floor(xx/pkg)*pkg, xu=xn+pkg;
+      var cands=[xn]; if(xu<=Q) cands.push(xu);
+      var bc=null, bv=Infinity;
+      for(var k=0;k<cands.length;k++){
+        var c=cands[k]; if(c<0||c>Q) continue;
+        var yy=Q-c;
+        var a= cd>0?(cs+c)/cd:Infinity;
+        var b= td>0?(ts+yy)/td:Infinity;
+        var v=Math.max(a,b);
+        if(v<bv){ bv=v; bc=c; }
+      }
+      if(bc!=null) xx=bc;
+    }
+    var yy2=Q-xx;
+    return {x:xx, y:yy2,
+      czT: cd>0?(cs+xx)/cd:null,
+      tjT: td>0?(ts+yy2)/td:null};
+  }
+  // ① 原逻辑：崇州周转 > 天津周转 + 10，二分求满足条件的最小崇州分配
   var lo=0, hi=Q, best=-1;
   if(gap(Q) <= 0){
     best = Q;
@@ -1650,22 +1725,25 @@ function calcAlloc(){
     }
     best=lo;
   }
-  var x=best, y=Q-x;
-  // 整件对齐：让崇州 x 就近取到件装量的整数倍，尽量装整件发货
-  if(pkg>0){
-    var xn=Math.floor(x/pkg)*pkg;          // 向下最近的整件盒数
-    var xu=xn+pkg;                          // 向上最近的整件盒数
-    if(xu<=Q){ x=xu; } else if(xn>=0){ x=xn; }
-    if(x>Q) x=Q;
-    y=Q-x;
+  var A = settle(best);
+  // ② 备选逻辑：崇州周转 = 天津周转
+  // (cs+x)/cd = (ts+Q-x)/td  →  x = (cd*(ts+Q) - td*cs) / (cd+td)
+  var B = null;
+  if(cd>0 && td>0){
+    B = settle((cd*(ts+Q) - td*cs) / (cd+td));
   }
-  var czT = cd>0 ? (cs+x)/cd : null;
-  var tjT = td>0 ? (ts+y)/td : null;
+  function healthy(R){ return !!(R && R.czT!=null && R.tjT!=null && R.czT<MAXT && R.tjT<MAXT); }
+  // 原逻辑能让双仓都低于 90 天就用原逻辑；否则尝试「崇州=天津」；仍不行则回退原逻辑
+  var R=A, mode='orig';
+  if(healthy(A)){ mode='orig'; R=A; }
+  else if(healthy(B)){ mode='eq'; R=B; }
+  else { mode='orig'; R=A; }
+  var x=R.x, y=R.y, czT=R.czT, tjT=R.tjT;
   // 件数（=盒数/件装量）
   function pcs(v){ return pkg>0 ? (Math.round(v/pkg*100)/100) : null; }
   var html='';
   html+='<div style="background:#f0fdfa;border:1px solid #d1fae5;border-radius:8px;padding:10px 12px">';
-  html+='<div style="font-weight:700;color:#0f766e;margin-bottom:4px">建议分配'+(pkg>0?'（按整件，件装量 '+pkg+' 盒/件）':'')+'</div>';
+  html+='<div style="font-weight:700;color:#0f766e;margin-bottom:4px">建议分配'+(pkg>0?'（按整件，件装量 '+pkg+' 盒/件）':'')+(mode==='eq'?' · 崇州=天津':'')+'</div>';
   html+='<div style="display:flex;justify-content:space-between;margin:4px 0"><span style="color:#555">崇州仓：</span><b>'+x+' 盒'+(pkg>0?'（'+(x/pkg).toFixed(1)+' 件）':'')+'</b><span style="color:#999">('+ (Q>0?(x/Q*100).toFixed(0):0) +'%)</span></div>';
   html+='<div style="display:flex;justify-content:space-between;margin:4px 0"><span style="color:#555">天津仓：</span><b>'+y+' 盒'+(pkg>0?'（'+(y/pkg).toFixed(1)+' 件）':'')+'</b><span style="color:#999">('+ (Q>0?(y/Q*100).toFixed(0):0) +'%)</span></div>';
   if(pkg>0){
@@ -1673,10 +1751,20 @@ function calcAlloc(){
     html+='<div style="margin-top:4px;padding-top:4px;border-top:1px dashed #d1fae5;font-size:12px;color:#0f766e;font-weight:600">合计：'+Q+' 盒（'+totPcs+' 件）'+( (x%pkg===0)?' · 崇州已按整件对齐':'')+'</div>';
   }
   html+='<div style="margin-top:8px;padding-top:6px;border-top:1px dashed #d1fae5;font-size:12px;color:#555">';
-  if(czT!=null) html+='崇州周转：<b>'+czT.toFixed(1)+'</b> 天 &nbsp; ';
-  if(tjT!=null) html+='天津周转：<b>'+tjT.toFixed(1)+'</b> 天';
+  if(czT!=null) html+='崇州周转：<b'+(czT>=MAXT?' style="color:#dc2626"':'')+'>'+czT.toFixed(1)+'</b> 天 &nbsp; ';
+  if(tjT!=null) html+='天津周转：<b'+(tjT>=MAXT?' style="color:#dc2626"':'')+'>'+tjT.toFixed(1)+'</b> 天';
   html+='</div>';
-  if(gap(Q)<=0){
+  // 双仓 90 天健康状态
+  if(healthy(R)){
+    html+='<div style="margin-top:4px;font-size:12px;color:#0f766e;font-weight:600">✅ 双仓周转均低于 90 天'+(mode==='eq'?'（已改用崇州=天津分配）':'')+'</div>';
+  }else{
+    html+='<div style="margin-top:4px;font-size:12px;color:#dc2626;font-weight:600">⚠ 双仓周转无法同时低于 90 天</div>';
+  }
+  if(mode==='eq'){
+    html+='<div style="margin-top:6px;font-size:12px;color:#0f766e;font-weight:600">🔄 原逻辑（崇州&gt;天津+10天）会使某一仓周转 ≥90 天，已改用「崇州周转 = 天津周转」分配，两仓均低于 90 天</div>';
+  }else if(!healthy(A)){
+    html+='<div style="margin-top:6px;font-size:12px;color:#dc2626">⚠ 「崇州=天津」也无法让双仓都低于 90 天，以下按原逻辑（崇州&gt;天津+10天）给出建议</div>';
+  }else if(gap(Q)<=0){
     html+='<div style="margin-top:6px;font-size:12px;color:#dc2626">⚠ 本批次数量全部给崇州仍无法满足“崇州&gt;天津+10天”，可加大发货量或调整库存/日销</div>';
   }else if(x===0){
     html+='<div style="margin-top:6px;font-size:12px;color:#0f766e;font-weight:600">✅ 当前已满足条件（崇州周转 > 天津周转 + 10天），本批可全部分配给天津</div>';
@@ -2238,6 +2326,8 @@ function applyFilters(){
       if(road==='捡漏专区'&&rd.indexOf('捡漏')<0)return false;
       if(road==='主题专区'&&rd.indexOf('主题')<0)return false;
       if(road==='满返专区'&&rd.indexOf('满返')<0)return false;
+      if(road==='秒杀专区'&&rd.indexOf('秒杀')<0)return false;
+      if(road==='推荐加入活动'&&r.actRoadRec!=='推荐加入活动')return false;
       if(road==='未购进'&&rd.indexOf('未购进')<0)return false;
     }
     if(curAct){
@@ -2378,7 +2468,7 @@ function render(){
       +'<td class="n">'+(noSales?'<span style="color:#999;font-size:12px">无销售数据</span>':'<span class="cov '+cc+'">'+c.toFixed(1)+'%</span>')+'</td>'
       +'<td class="n">'+((r.q4Sales||0)+(r.q1_26Sales||0)).toLocaleString()+'</td>'
       +'<td class="n">'+(noSales2?'<span style="color:#999;font-size:12px">无销售数据</span>':'<span class="cov '+covClass(c2)+'">'+c2.toFixed(1)+'%</span>')+'</td>'
-      +actRoadTd(r)
+      +actRoadTd(r,idx,canActFb)
       +actFbTd(r,idx,canActFb)
       +'<td class="sm-hide '+editClass+'"'+editAttr+' data-i="'+idx+'" data-f="remark" style="min-width:100px'+(remarkColor?';'+remarkColor:'')+'">'+escHtml(r.remark||'')+'</td>'
       +'<td class="n sm-hide'+((isGtUser||isOps)?' editable':'')+'"'+((isGtUser||isOps)?' contenteditable="true"':'')+' data-i="'+idx+'" data-f="opsDemand">'+(r.opsDemand||0).toLocaleString()+'</td>'
@@ -2528,8 +2618,35 @@ function nearExpTag(r){
 function actPlanTd(r){
   return '<td class="c" style="font-size:12px;color:#555;white-space:nowrap">'+escHtml(r.actPlan||'')+'</td>';
 }
-function actRoadTd(r){
+// 活动规划：运营已排期则只读展示；为空时计划人员可下拉选「推荐加入活动」
+function actRoadTd(r,idx,canEdit){
+  var rec=r.actRoadRec||'';
+  var hasPlan=!!(r.actRoad && r.actRoad!==rec);   // 运营真实排期，不可改
+  if(!hasPlan && canEdit){
+    var _sel='<select class="cell-sel" data-i="'+idx+'" data-f="actRoad" onchange="updActRoad(this)" title="活动规划为空，可推荐做活动">'
+      +'<option value=""'+(!rec?' selected':'')+'></option>'
+      +'<option value="推荐加入活动"'+(rec==='推荐加入活动'?' selected':'')+'>推荐加入活动</option>'
+      +'</select>';
+    return '<td class="c sm-hide" style="font-size:12px;color:#555">'+_sel+'</td>';
+  }
   return '<td class="c sm-hide" style="font-size:12px;color:#555">'+escHtml((r.actRoad||'').split('|').join(' · '))+'</td>';
+}
+// 写「推荐加入活动」：存到 sku_activity 的 kind=recommend 独立行，不动运营推送的 planned/ongoing
+function updActRoad(el){
+  var idx=parseInt(el.dataset.i);
+  var r=filtered[idx]; if(!r) return;
+  var v=el.value;
+  r.actRoadRec=v;
+  r.actRoad=v;
+  if(supabaseReady){
+    sb.from('sku_activity').upsert({
+      erp_id:r.erpId, dept:r.dept, kind:'recommend',
+      act_road: v||null,
+      updated_at:new Date().toISOString()
+    },{onConflict:'erp_id,dept,kind'})
+    .then(function(res){ if(res.error) toast('保存失败：'+res.error.message); else toast(v?'已标记推荐加入活动':'已取消推荐'); });
+  } else { toast('未连接云端，稍后自动重试'); }
+  render();
 }
 // ⑥ 能否做活动：唯一可写列。留空=待计划填写；title 带填报时间与原因
 function actFbTd(r,idx,canEdit){
@@ -2552,8 +2669,6 @@ function updActFb(el){
   var r=filtered[idx]; if(!r) return;
   r.actFb=el.value;
   r.actFbAt=new Date().toISOString();
-  var note=prompt('原因/说明（可留空；选"不能做"建议填写，如 缺货/成本不行/排期冲突）：',r.actFbNote||'');
-  if(note!==null) r.actFbNote=note.trim();
   if(supabaseReady){
     sb.from('sku_edits').upsert({
       erp_id:r.erpId, dept:r.dept,
@@ -2610,9 +2725,17 @@ function csvCell(v){
   return v;
 }
 function exportMine(){
-  if(!currentPlanner){ toast('未选择计划人员'); return; }
-  var list = allData.filter(function(r){ return r.planner===currentPlanner; });
-  if(!list.length){ toast('没有找到「'+currentPlanner+'」负责的产品数据'); return; }
+  // 运营账号（role=operator 或身份为「运营」）可导出所有人员的全部数据
+  var isOpsUser = (userRole==='operator') || (currentPlanner==='运营');
+  var list;
+  if(isOpsUser){
+    list = (allData||[]).slice();
+    if(!list.length){ toast('暂无可导出的数据'); return; }
+  } else {
+    if(!currentPlanner){ toast('未选择计划人员'); return; }
+    list = allData.filter(function(r){ return r.planner===currentPlanner; });
+    if(!list.length){ toast('没有找到「'+currentPlanner+'」负责的产品数据'); return; }
+  }
   var cols=['ERP编号','部门','品种名称','规格','厂家','采销','计划人员','在库','在外','在产','总库存','崇州周转','崇州日销','天津周转','天津日销','总周转','品种周转变化','10-12月销量','差额','10-12月覆盖率%','10-3月销量','10-3月覆盖率%','活动规划','能否做活动','运营侧需求','是否满足产能','计划日期','备注'];
   var rows=list.map(function(r){
     return [
@@ -2633,10 +2756,10 @@ function exportMine(){
   a.href=url;
   var d=new Date();
   var ts=d.getFullYear()+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2);
-  a.download='我的数据_'+currentPlanner+'_'+ts+'.csv';
+  a.download = isOpsUser ? ('全部数据_'+ts+'.csv') : ('我的数据_'+currentPlanner+'_'+ts+'.csv');
   document.body.appendChild(a);a.click();
   document.body.removeChild(a);URL.revokeObjectURL(url);
-  toast('已导出 '+list.length+' 条数据');
+  toast('已导出 '+list.length+' 条数据'+(isOpsUser?'（全部计划人员）':''));
 }
 function downloadTemplate(){
   const b64='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';
@@ -2873,7 +2996,7 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.cla
   <div style="padding:12px 14px">
     <div style="margin-bottom:10px;font-size:12px;color:#dc2626;background:#fef2f2;padding:8px 10px;border-radius:6px;border:1px solid #fecaca;font-weight:600">⚠ 依据近30日日销做发货分配，仅做参考，请注意考虑断货、活动造成的销量影响。</div>
     <div id="al_prodInfo" style="margin-bottom:10px;font-size:13px;color:#0f766e;font-weight:700"></div>
-    <div style="margin-bottom:10px;font-size:12px;color:#555;background:#f0fdfa;padding:8px 10px;border-radius:6px;border-left:3px solid #0f766e">按「崇州周转 &gt; 天津周转 + 10天」给出建议分配。</div>
+    <div style="margin-bottom:10px;font-size:12px;color:#555;background:#f0fdfa;padding:8px 10px;border-radius:6px;border-left:3px solid #0f766e">默认按「崇州周转 &gt; 天津周转 + 10天」分配；若该结果使任一仓周转 ≥ 90 天，会自动改试「崇州周转 = 天津周转」，两仓都能低于 90 天才采用。</div>
     <div style="margin-bottom:6px;font-size:14px;font-weight:700;color:#0f766e">发货数量（盒）</div>
     <input id="al_qty" type="number" min="0" style="width:100%;padding:8px 10px;font-size:15px;border:1.5px solid #0f766e;border-radius:6px;box-sizing:border-box" placeholder="如 5000">
     <div style="margin:14px 0 6px;font-size:14px;font-weight:700;color:#0f766e">按期望周转天数分配</div>
