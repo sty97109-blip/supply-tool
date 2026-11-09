@@ -1856,7 +1856,7 @@ function calcAllocByDays(){
 
 
 // ===== 批量补货建议工具（计算逻辑复用 calcAllocByDays）=====
-window.brState = { manus: {}, depts: {}, manuList: null };
+window.brState = { manus: {}, depts: {}, manuList: null, prods: {}, prodList: null, lastTransfer: null };
 
 function brEsc(s){
   return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -1905,6 +1905,7 @@ function brSetPlanner(v){
   window.brState.planner = v ? decodeURIComponent(v) : '';
   brInitManus();
   brRenderManu();
+  brRefreshProds();
 }
 
 function openBatchReplen(){
@@ -1912,6 +1913,7 @@ function openBatchReplen(){
   brInitManus();
   brRenderManu();
   brRenderDept();
+  brRefreshProds();
   var el = document.getElementById('batchReplenTool');
   if(el) el.style.display = 'flex';
   var res = document.getElementById('br_result');
@@ -1959,6 +1961,7 @@ function brToggleManu(cb){
   var lab = cb.parentNode;
   if(lab) lab.style.background = cb.checked ? '#f0fdfa' : '';
   brRenderChips();
+  brRefreshProds();
 }
 
 function brRenderChips(){
@@ -1979,6 +1982,97 @@ function brRemoveManu(el){
   var v = decodeURIComponent(el.getAttribute('data-v'));
   delete window.brState.manus[v];
   brRenderManu();
+  brRefreshProds();
+}
+
+/* ===== 批量补货：产品筛选（随部门/计划人员/厂家联动）===== */
+function brProdKey(r){ return (r.erpId || '') + '||' + (r.dept || ''); }
+
+function brManuRows(){
+  var manus = Object.keys(window.brState.manus || {});
+  return brBaseRows().filter(function(r){
+    if(manus.length && manus.indexOf(r.manufacturer) < 0) return false;
+    return true;
+  });
+}
+
+function brInitProds(){
+  var set = {};
+  brManuRows().forEach(function(r){
+    var k = brProdKey(r);
+    if(!k) return;
+    set[k] = { key: k, name: r.name || '', manu: r.manufacturer || '', dept: r.dept || '' };
+  });
+  window.brState.prodList = Object.keys(set).map(function(k){ return set[k]; })
+    .sort(function(a, b){ return String(a.name).localeCompare(String(b.name), 'zh'); });
+  Object.keys(window.brState.prods || {}).forEach(function(k){
+    if(!set[k]) delete window.brState.prods[k];
+  });
+}
+
+function brRefreshProds(){ brInitProds(); brRenderProd(); }
+
+function brRenderProd(){
+  var box = document.getElementById('br_prodList');
+  if(!box) return;
+  var inp = document.getElementById('br_prodSearch');
+  var kw = ((inp && inp.value) || '').trim().toLowerCase();
+  var list = window.brState.prodList || [];
+  var matched = kw ? list.filter(function(p){
+    return String(p.name).toLowerCase().indexOf(kw) >= 0 || String(p.manu).toLowerCase().indexOf(kw) >= 0;
+  }) : list;
+  var MAX = 300, shown = matched.slice(0, MAX), html = '';
+  var hasScope = Object.keys(window.brState.depts || {}).length > 0
+    || (window.brState.planner || '') !== ''
+    || Object.keys(window.brState.manus || {}).length > 0;
+  if(hasScope){
+    html += '<div style="padding:5px 9px;color:#0f766e;font-size:11.5px;background:#f0fdfa;border-bottom:1px solid #d1fae5">'
+         + '已按部门/计划人员/厂家筛选，共 ' + list.length + ' 个产品</div>';
+  }
+  shown.forEach(function(p){
+    var on = !!window.brState.prods[p.key];
+    html += '<label style="display:flex;align-items:center;gap:7px;padding:5px 9px;cursor:pointer;border-bottom:1px solid #f3f4f6;font-size:12.5px;'
+         + (on ? 'background:#f0fdfa;' : '') + '">'
+         + '<input type="checkbox" ' + (on ? 'checked' : '') + ' onchange="brToggleProd(this)" value="' + encodeURIComponent(p.key) + '" '
+         + 'style="width:14px;height:14px;cursor:pointer;flex-shrink:0">'
+         + '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + brEsc(p.name) + '</span>'
+         + '<span style="color:#9ca3af;font-size:11px;max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + brEsc(p.manu) + '</span></label>';
+  });
+  if(matched.length > MAX) html += '<div style="padding:8px;color:#999;font-size:12px;text-align:center">还有 ' + (matched.length - MAX) + ' 个，请继续输入关键字</div>';
+  if(!matched.length) html += '<div style="padding:14px;color:#999;font-size:12px;text-align:center">没有匹配的产品</div>';
+  box.innerHTML = html;
+  brRenderProdChips();
+}
+
+function brToggleProd(cb){
+  var v = decodeURIComponent(cb.value);
+  if(cb.checked) window.brState.prods[v] = 1; else delete window.brState.prods[v];
+  var lab = cb.parentNode;
+  if(lab) lab.style.background = cb.checked ? '#f0fdfa' : '';
+  brRenderProdChips();
+}
+
+function brRenderProdChips(){
+  var box = document.getElementById('br_prodChips');
+  if(!box) return;
+  var keys = Object.keys(window.brState.prods || {});
+  if(!keys.length){ box.innerHTML = '<span style="display:inline-block;margin-top:6px;color:#999;font-size:12px">未选择 → 默认全部产品</span>'; return; }
+  var map = {};
+  (window.brState.prodList || []).forEach(function(p){ map[p.key] = p; });
+  var html = '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px">';
+  keys.forEach(function(k){
+    var p = map[k] || { name: k };
+    html += '<span style="display:inline-flex;align-items:center;gap:4px;background:#0f766e;color:#fff;border-radius:12px;padding:2px 8px;font-size:11.5px">'
+         + brEsc(p.name) + '<b style="cursor:pointer;font-weight:400" data-v="' + encodeURIComponent(k) + '" onclick="brRemoveProd(this)">✕</b></span>';
+  });
+  html += '</div>';
+  box.innerHTML = html;
+}
+
+function brRemoveProd(el){
+  var v = decodeURIComponent(el.getAttribute('data-v'));
+  delete window.brState.prods[v];
+  brRenderProd();
 }
 
 function brRenderDept(){
@@ -2008,6 +2102,7 @@ function brToggleDept(cb){
   brRenderDept();
   brInitManus();
   brRenderManu();
+  brRefreshProds();
 }
 
 function brAllocOne(r, D){
@@ -2034,11 +2129,13 @@ function brCalc(){
   if(D <= 0){ box.innerHTML = '<div style="color:#dc2626;font-weight:600;padding:10px 0">请输入期望周转天数（大于 0）</div>'; return; }
   var manus = Object.keys(window.brState.manus);
   var depts = Object.keys(window.brState.depts);
+  var prods = Object.keys(window.brState.prods || {});
   var planner = window.brState.planner || '';
   var rows = (allData||[]).filter(function(r){
     if(planner && r.planner !== planner) return false;
     if(manus.length && manus.indexOf(r.manufacturer) < 0) return false;
     if(depts.length && depts.indexOf(r.dept) < 0) return false;
+    if(prods.length && prods.indexOf(brProdKey(r)) < 0) return false;
     return true;
   });
   var out = [], skip = 0, sumCz = 0, sumTj = 0;
@@ -2219,6 +2316,128 @@ function brExport(){
   document.body.appendChild(a2); a2.click(); document.body.removeChild(a2);
   setTimeout(function(){ URL.revokeObjectURL(url2); }, 3000);
   if(typeof toast === 'function') toast('已导出 CSV');
+}
+
+/* ===== 批量补货：天津调货（转运建议）===== */
+function brTransferOne(r, mode){
+  var pkg = (window.pkgMap || {})[r.erpId + '||' + r.dept] || 0;
+  pkg = pkg > 0 ? Math.floor(pkg) : 0;
+  var S = fmtNum(r.czStock), T = fmtNum(r.tjStock);
+  var ds = fmtNum(r.czDaily), dt = fmtNum(r.tjDaily);
+  if(ds <= 0 || dt <= 0) return null;
+  if(S <= 0) return null;
+  var Ts = S / ds, Tt = T / dt;
+  if(!(Ts > Tt)) return null;
+  if(mode === 'supply' && !(Tt < 25)) return null;
+  var gap = (mode === 'supply') ? 5 : 10;
+  var den = ds + dt;
+  var xRaw = (dt * S - ds * T - gap * ds * dt) / den;
+  if(!(xRaw > 0)) return null;
+  var toPkg = function(v){ return pkg > 0 ? Math.floor(v / pkg) * pkg : Math.floor(v); };
+  var x = toPkg(xRaw);
+  if(x > S) x = toPkg(S);
+  if(!(x > 0)) return null;
+  var s2 = (S - x) / ds, t2 = (T + x) / dt;
+  var flipped = false;
+  if(s2 < 30 || t2 < 30){
+    var xb = (dt * S - ds * T) / den;
+    var x2 = pkg > 0 ? Math.round(xb / pkg) * pkg : Math.round(xb);
+    if(x2 > S) x2 = toPkg(S);
+    if(x2 > 0){
+      if((S - x2) / ds < (T + x2) / dt && pkg > 0) x2 = Math.floor(xb / pkg) * pkg;
+      if(x2 > 0){
+        x = x2;
+        s2 = (S - x) / ds;
+        t2 = (T + x) / dt;
+        flipped = true;
+      }
+    }
+  }
+  var rd = function(v){ return Math.round(v * 10) / 10; };
+  return { x: x, pkg: pkg, flipped: flipped, czBefore: rd(Ts), tjBefore: rd(Tt), czAfter: rd(s2), tjAfter: rd(t2) };
+}
+
+function brTransfer(mode){
+  var box = document.getElementById('br_result');
+  if(!box) return;
+  if(!allData || !allData.length){
+    box.innerHTML = '<div style="color:#dc2626;font-weight:600;padding:10px 0">数据尚未加载完成，请稍后再试</div>';
+    return;
+  }
+  var manus = Object.keys(window.brState.manus || {});
+  var depts = Object.keys(window.brState.depts || {});
+  var prods = Object.keys(window.brState.prods || {});
+  var planner = window.brState.planner || '';
+  var rows = (allData || []).filter(function(r){
+    if(planner && r.planner !== planner) return false;
+    if(manus.length && manus.indexOf(r.manufacturer) < 0) return false;
+    if(depts.length && depts.indexOf(r.dept) < 0) return false;
+    if(prods.length && prods.indexOf(brProdKey(r)) < 0) return false;
+    return true;
+  });
+  var out = [], skip = 0, sumX = 0, sumFlip = 0;
+  rows.forEach(function(r){
+    var t = brTransferOne(r, mode);
+    if(!t){ skip++; return; }
+    out.push({ r: r, t: t });
+    sumX += t.x;
+    if(t.flipped) sumFlip++;
+  });
+  var title = (mode === 'supply') ? '补货转运' : '整体转运';
+  var rule = (mode === 'supply')
+    ? '天津周转 < 25 天才转，转运后崇州周转高于天津 5 天'
+    : '转运后崇州周转高于天津 10 天';
+  box.setAttribute('data-done', '1');
+  if(!out.length){
+    box.innerHTML = '<div style="color:#999;padding:30px 0;text-align:center">所选范围内没有需要' + title + '的产品（' + rule + '）</div>';
+    return;
+  }
+  out.sort(function(p, q){
+    var rp = brDeptRank(p.r.dept), rq = brDeptRank(q.r.dept);
+    if(rp !== rq) return rp - rq;
+    var d1 = String(p.r.dept), d2 = String(q.r.dept);
+    if(d1 !== d2) return d1.localeCompare(d2, 'zh');
+    return String(p.r.name).localeCompare(String(q.r.name), 'zh');
+  });
+  window.brState.lastTransfer = { mode: mode, out: out, sumX: sumX };
+  var html = '';
+  html += '<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12.5px;color:#92400e">';
+  html += '<b>' + title + '</b>（' + rule + '）';
+  if(planner) html += ' ｜ 计划人员 <b>' + brEsc(planner) + '</b>';
+  html += ' ｜ 命中 <b>' + out.length + '</b> 个产品';
+  if(skip) html += '<span style="color:#a8a29e">（' + skip + ' 个不满足条件已跳过）</span>';
+  if(sumFlip) html += '<span style="color:#b45309">（其中 ' + sumFlip + ' 个按双仓持平兜底）</span>';
+  html += '<div style="margin-top:6px;font-size:13px;font-weight:700">合计转运 <span style="color:#dc2626">' + Math.round(sumX) + '</span> 盒</div>';
+  html += '</div>';
+  html += '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch">';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:12.5px;table-layout:fixed">';
+  html += '<colgroup><col style="width:56px"><col style="width:250px"><col style="width:180px"><col style="width:100px"><col style="width:96px"><col style="width:120px"><col style="width:124px"></colgroup>';
+  var TH = 'padding:7px 7px;border-bottom:2px solid #e5e7eb;white-space:nowrap;';
+  html += '<thead><tr style="background:#f8f9fa">'
+       + '<th style="' + TH + '">部门</th>'
+       + '<th style="' + TH + '">商品名称</th>'
+       + '<th style="' + TH + '">生产厂家</th>'
+       + '<th style="' + TH + '">规格</th>'
+       + '<th style="' + TH + '">转运数量</th>'
+       + '<th style="' + TH + '">崇州转运后周转</th>'
+       + '<th style="' + TH + 'font-weight:800;color:#111">天津转运后周转</th>'
+       + '</tr></thead><tbody>';
+  var TD = 'padding:6px 8px;border-bottom:1px solid #f3f4f6;text-align:right;';
+  out.forEach(function(o){
+    var r = o.r, t = o.t;
+    html += '<tr>'
+         + '<td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;white-space:nowrap">' + brEsc(r.dept) + '</td>'
+         + '<td style="padding:6px 8px;border-bottom:1px solid #f3f4f6"><span class="br-ell">' + brEsc(r.name) + '</span></td>'
+         + '<td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;color:#777"><span class="br-ell">' + brEsc(r.manufacturer) + '</span></td>'
+         + '<td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;color:#777"><span class="br-ell">' + brEsc(r.spec) + '</span></td>'
+         + '<td style="' + TD + 'font-weight:600;color:#b45309">' + Math.round(t.x) + '</td>'
+         + '<td style="' + TD + 'color:#374151">' + t.czAfter + '</td>'
+         + '<td style="' + TD + 'font-weight:700;color:#111">' + t.tjAfter + '</td>'
+         + '</tr>';
+  });
+  html += '</tbody></table></div>';
+  html += '<div style="color:#999;font-size:11.5px;margin-top:8px">转运数量已按件装量整件取整；「天津转运后周转」为转运后天津仓周转天数。</div>';
+  box.innerHTML = html;
 }
 
 function calcTotal(r){return(r.stock||0)+(r.outStock||0)+(r.production||0)+(r.opsDemand||0)}
@@ -2594,7 +2813,8 @@ function normTurn(v){
   if(v==null||v==='') return '';
   var n=Number(v);
   if(isNaN(n)) return '';
-  return n<0?0:n;
+  if(n<0) n=0;
+  return Math.round(n*10)/10;   // 保留小数点后一位
 }
 function actTurnTd(r){
   if(!r.turnText) return '<td class="c sm-hide"></td>';
@@ -3050,7 +3270,7 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.cla
 #batchReplenTool .br-hd{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#0f766e;color:#fff;flex-shrink:0}
 #batchReplenTool .br-hd .br-t{font-weight:700;font-size:14px}
 #batchReplenTool .br-hd button{border:none;background:none;font-size:17px;color:#fff;cursor:pointer;line-height:1}
-#batchReplenTool .br-body{padding:12px 14px;border-bottom:1px solid #e5e7eb;flex-shrink:0;max-height:56%;overflow:auto}
+#batchReplenTool .br-body{padding:12px 14px;border-bottom:1px solid #e5e7eb;flex-shrink:0;max-height:68%;overflow:auto}
 #batchReplenTool .br-lab{font-size:12.5px;font-weight:700;color:#0f766e;margin:0 0 5px}
 #batchReplenTool .br-tip{font-size:11.5px;color:#999;margin:4px 0 0}
 #batchReplenTool .br-sec{margin-bottom:12px}
@@ -3075,7 +3295,19 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.cla
 #batchReplenTool #br_plannerSel{width:100%;box-sizing:border-box;padding:7px 8px;font-size:13px;border:1px solid #d1d5db;border-radius:6px;outline:none;background:#fff;height:33px}
 #batchReplenTool #br_deptList{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:33px}
 #batchReplenTool #br_manuPanel{margin-top:6px}
+#batchReplenTool .br-f-prod{display:flex;flex-direction:column;gap:4px;min-width:0}
+#batchReplenTool #br_prodSearch{width:100%;box-sizing:border-box;height:33px;padding:0 10px;font-size:13px;border:1px solid #d1d5db;border-radius:6px;outline:none}
+#batchReplenTool #br_prodPanel{margin-top:6px}
+#batchReplenTool #br_prodList{margin-top:6px;max-height:120px;overflow:auto;border:1px solid #e5e7eb;border-radius:6px}
+#batchReplenTool .br-row .br-tip{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0 0 0 6px}
+#batchReplenTool #btnBrTransferSupply{padding:8px 16px;font-size:13px;font-weight:600;color:#fff;background:#b45309;border:none;border-radius:6px;cursor:pointer;white-space:nowrap}
+#batchReplenTool #btnBrTransferSupply:hover{background:#92400e}
+#batchReplenTool #btnBrTransferAll{padding:8px 16px;font-size:13px;font-weight:600;color:#fff;background:#92400e;border:none;border-radius:6px;cursor:pointer;white-space:nowrap}
+#batchReplenTool #btnBrTransferAll:hover{background:#78350f}
 #batchReplenTool .br-row{flex-wrap:nowrap}
+#batchReplenTool .br-xfer-row{display:flex;align-items:flex-end;gap:16px;flex-wrap:nowrap}
+#batchReplenTool .br-xfer-grp{display:flex;flex-direction:column;min-width:0}
+#batchReplenTool .br-xfer-grp2{margin-left:auto}
 #batchReplenTool #br_days{width:104px}
 #batchReplenTool #br_result{flex:1;min-width:0;overflow:auto;padding:12px 14px;-webkit-overflow-scrolling:touch}
 #batchReplenTool #br_result>div{min-width:0}
@@ -3119,13 +3351,33 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.cla
         <div id="br_manuChips"></div>
       </div>
     </div>
+    <div class="br-sec" style="margin-bottom:6px">
+      <div class="br-f br-f-prod">
+        <div class="br-flab">产品<span class="br-fhint">（可搜索、可多选；不选则包含所选厂家的全部产品）</span></div>
+        <input id="br_prodSearch" type="text" placeholder="输入产品名称或厂家搜索…" oninput="brRenderProd()">
+      </div>
+      <div id="br_prodPanel">
+        <div id="br_prodList"></div>
+        <div id="br_prodChips"></div>
+      </div>
+    </div>
     <div class="br-sec" style="margin-bottom:0">
-      <div class="br-lab">期望周转天数</div>
-      <div class="br-row">
-        <input id="br_days" type="number" min="0" step="1" placeholder="30">
-        <button type="button" id="btnBrCalc" onclick="brCalc()">计算建议</button>
-        <button type="button" id="btnBrExport" onclick="brExport()" disabled>⬇ 导出 Excel</button>
-        <span class="br-tip" style="margin:0 0 0 6px">崇州/天津各自按 期望天数×日销−现有库存 补齐，按件装量向上取整</span>
+      <div class="br-xfer-row">
+        <div class="br-xfer-grp">
+          <div class="br-lab">期望周转天数</div>
+          <div class="br-row">
+            <input id="br_days" type="number" min="0" step="1" placeholder="30">
+            <button type="button" id="btnBrCalc" onclick="brCalc()">计算建议</button>
+            <button type="button" id="btnBrExport" onclick="brExport()" disabled>⬇ 导出 Excel</button>
+          </div>
+        </div>
+        <div class="br-xfer-grp br-xfer-grp2">
+          <div class="br-lab">天津转运建议</div>
+          <div class="br-row">
+            <button type="button" id="btnBrTransferSupply" onclick="brTransfer('supply')">补货转运</button>
+            <button type="button" id="btnBrTransferAll" onclick="brTransfer('overall')">整体转运</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
