@@ -3531,5 +3531,202 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.cla
 })();
 </script>
 <!-- ===== 使用埋点结束 ===== -->
+<!-- ===== v5.25 新版本强制更新提示（独立模块，零耦合） ===== -->
+<script>
+(function(){
+  'use strict';
+  try{
+    var fired = false;
+    var loading = false;
+    var lastCheck = 0;
+    var MIN_GAP = 120000;    /* 两次检查之间至少间隔 120 秒，防止频繁触发 */
+    var CSS_ID = 'verStyle';
+    var CSS = ''
+      + '#verMask{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483000;'
+      + 'background:rgba(15,23,42,.80);display:flex;align-items:center;justify-content:center;'
+      + 'padding:20px;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);'
+      + 'cursor:default;user-select:none;-webkit-user-select:none;}'
+      + '#verBox{width:100%;max-width:520px;background:#fff;border-radius:16px;'
+      + 'padding:42px 36px 34px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.38);'
+      + 'animation:verIn .28s cubic-bezier(.2,.8,.2,1);cursor:default;}'
+      + '@keyframes verIn{from{transform:translateY(14px) scale(.97);opacity:0}to{transform:none;opacity:1}}'
+      + '#verIcon{width:66px;height:66px;margin:0 auto 18px;border-radius:50%;'
+      + 'background:#fef3c7;color:#b45309;font-size:38px;font-weight:800;line-height:66px;'
+      + 'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;}'
+      + '#verTitle{margin:0 0 12px;font-size:27px;font-weight:800;color:#111827;letter-spacing:.5px;'
+      + 'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;}'
+      + '#verDesc{margin:0 0 10px;font-size:15px;color:#4b5563;line-height:1.75;'
+      + 'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;}'
+      + '#verWarn{margin:0 0 26px;font-size:12.5px;color:#b45309;'
+      + 'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;}'
+      + '#verBtn{display:block;width:100%;padding:16px 0;font-size:18px;font-weight:700;color:#fff;'
+      + 'background:#0f766e;border:0;border-radius:10px;cursor:pointer;letter-spacing:1px;'
+      + 'font-family:inherit;transition:background .15s ease;}'
+      + '#verBtn:hover{background:#0b5a54;}'
+      + '#verBtn:focus-visible{outline:3px solid #5eead4;outline-offset:2px;}'
+      + '#verBtn:disabled{opacity:.72;cursor:default;}'
+      + '@media (max-width:520px){'
+      + '#verBox{padding:30px 22px 26px;border-radius:13px;}'
+      + '#verIcon{width:52px;height:52px;line-height:52px;font-size:30px;margin-bottom:14px;}'
+      + '#verTitle{font-size:21px;}'
+      + '#verDesc{font-size:14px;}'
+      + '#verWarn{font-size:12px;margin-bottom:20px;}'
+      + '#verBtn{font-size:16px;padding:14px 0;}'
+      + '}'
+      + '@media (prefers-reduced-motion:reduce){#verBox{animation:none;}}';
+
+    function injectCSS(){
+      if(document.getElementById(CSS_ID)) return;
+      var s = document.createElement('style');
+      s.id = CSS_ID;
+      s.appendChild(document.createTextNode(CSS));
+      (document.head || document.documentElement).appendChild(s);
+    }
+
+    function headLM(){
+      var base = location.origin + location.pathname;
+      var url = base + '?_=' + Date.now();
+      return fetch(url, { method:'HEAD', cache:'no-store', credentials:'same-origin' })
+        .then(function(r){
+          return r.headers.get('Last-Modified') || r.headers.get('ETag') || '';
+        })
+        .catch(function(){ return ''; });
+    }
+
+    /* 本页面实际加载的是哪个版本（浏览器缓存的话就是缓存里的旧时间） */
+    function loadedLM(){
+      try{
+        var s = document.lastModified || '';
+        if(!s) return '';
+        var d = new Date(s);
+        if(isNaN(d.getTime())) return '';
+        return d.toUTCString();
+      }catch(e){ return ''; }
+    }
+
+    function lockScroll(on){
+      try{
+        document.documentElement.style.overflow = on ? 'hidden' : '';
+        document.body.style.overflow = on ? 'hidden' : '';
+      }catch(e){}
+    }
+
+    function show(){
+      if(fired) return;
+      fired = true;
+      injectCSS();
+      lockScroll(true);
+
+      var mask = document.createElement('div');
+      mask.id = 'verMask';
+      mask.setAttribute('role','alertdialog');
+      mask.setAttribute('aria-modal','true');
+      mask.setAttribute('aria-labelledby','verTitle');
+      mask.setAttribute('aria-describedby','verDesc');
+
+      var box = document.createElement('div');
+      box.id = 'verBox';
+
+      var icon = document.createElement('div');
+      icon.id = 'verIcon';
+      icon.setAttribute('aria-hidden','true');
+      icon.textContent = '!';
+
+      var h = document.createElement('h2');
+      h.id = 'verTitle';
+      h.textContent = '工具有新版本';
+
+      var p1 = document.createElement('p');
+      p1.id = 'verDesc';
+      p1.textContent = '请点击下方按钮刷新页面，加载最新版本后继续使用。';
+
+      var p2 = document.createElement('p');
+      p2.id = 'verWarn';
+      p2.textContent = '刷新后，未保存的编辑内容会丢失';
+
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.id = 'verBtn';
+      btn.textContent = '立即刷新';
+      btn.addEventListener('click', function(){
+        btn.disabled = true;
+        btn.textContent = '正在刷新…';
+        try{ location.reload(true); }catch(e){ location.reload(); }
+      });
+
+      box.appendChild(icon);
+      box.appendChild(h);
+      box.appendChild(p1);
+      box.appendChild(p2);
+      box.appendChild(btn);
+      mask.appendChild(box);
+      document.body.appendChild(mask);
+
+      try{ btn.focus(); }catch(e){}
+
+      /* 防止页面自身重建 body 时把弹窗冲掉：每秒检查一次，丢了就重新挂回去 */
+      setInterval(function(){
+        try{
+          if(!document.documentElement.contains(mask)){
+            (document.body || document.documentElement).appendChild(mask);
+            lockScroll(true);
+          }
+        }catch(x){}
+      }, 1000);
+
+      /* 遮罩吞掉所有点击，不允许点空白关闭 */
+      mask.addEventListener('click', function(e){ e.stopPropagation(); e.preventDefault(); }, true);
+      mask.addEventListener('mousedown', function(e){ e.stopPropagation(); e.preventDefault(); }, true);
+      mask.addEventListener('touchstart', function(e){ e.stopPropagation(); }, true);
+      mask.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+
+      /* 屏蔽 ESC / 回车以外的一切关闭途径 */
+      document.addEventListener('keydown', function(e){
+        if(e.key === 'Escape' || e.keyCode === 27){
+          e.preventDefault(); e.stopPropagation();
+          return false;
+        }
+        /* 焦点锁在弹窗内 */
+        if(e.key === 'Tab'){
+          e.preventDefault();
+          try{ btn.focus(); }catch(x){}
+        }
+      }, true);
+
+      /* 拦截页面自身的关闭逻辑（如果有） */
+      mask.addEventListener('close', function(e){ e.preventDefault(); });
+    }
+
+    function check(){
+      if(fired || loading) return;
+      var now = Date.now();
+      if(now - lastCheck < MIN_GAP) return;
+      lastCheck = now;
+
+      var mine = loadedLM();
+      if(!mine) return;   /* 拿不到本地版本就不判断，避免误弹 */
+
+      loading = true;
+      headLM().then(function(srv){
+        loading = false;
+        if(fired || !srv) return;
+        if(srv !== mine) show();
+      });
+    }
+
+    /* 只在两个时机检查：页面加载完成、用户切回页面。不做定时轮询 */
+    if(document.readyState === 'complete'){
+      setTimeout(check, 2000);
+    }else{
+      window.addEventListener('load', function(){ setTimeout(check, 2000); });
+    }
+
+    document.addEventListener('visibilitychange', function(){
+      if(document.visibilityState === 'visible') check();
+    });
+    window.addEventListener('focus', function(){ check(); });
+  }catch(e){}
+})();
+</script>
 </body>
 </html>
