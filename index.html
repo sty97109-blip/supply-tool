@@ -22,11 +22,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="供应覆盖">
+<meta name="apple-mobile-web-app-title" content="供应链管理">
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
-<title>四季度供应覆盖管理工具</title>
+<title>供应链管理系统</title>
 <script>
 /**
  * Skipped minification because the original files appears to be already minified.
@@ -542,7 +542,7 @@ input.fsel{width:100%;min-width:0;max-width:none}
 <div class="login-overlay" id="loginOverlay">
   <div class="login-card">
     <div class="login-logo">📋</div>
-    <div class="login-brand">四季度供应覆盖管理系统</div>
+    <div class="login-brand">供应链管理系统</div>
     <div class="login-sub">请输入账号密码并选择计划人员登录</div>
     <div class="login-field">
       <label>账号</label>
@@ -604,7 +604,7 @@ input.fsel{width:100%;min-width:0;max-width:none}
   <div class="header-left">
     <div class="header-icon">📋</div>
     <div>
-      <div class="header-title">四季度供应覆盖管理工具</div>
+      <div class="header-title">供应链管理系统</div>
       <div class="header-sub">2025年10—12月同期销量 · 部门级 SKU 供应覆盖</div>
     </div>
   </div>
@@ -722,7 +722,7 @@ input.fsel{width:100%;min-width:0;max-width:none}
   <div class="tbl-section">
     <div class="tbl-head">
       <div>
-        <div class="tbl-title">供应覆盖明细<button type="button" id="btnBatchReplen" onclick="openBatchReplen()" style="margin-left:10px;padding:4px 12px;font-size:12px;font-weight:600;color:#fff;background:#0f766e;border:none;border-radius:6px;cursor:pointer;vertical-align:middle;line-height:1.4">批量补货</button></div>
+        <div class="tbl-title">SKU 供应明细<button type="button" id="btnBatchReplen" onclick="openBatchReplen()" style="margin-left:10px;padding:4px 12px;font-size:12px;font-weight:600;color:#fff;background:#0f766e;border:none;border-radius:6px;cursor:pointer;vertical-align:middle;line-height:1.4">批量补货</button></div>
         <div class="tbl-sub">黄色列可维护；数据实时同步至云端数据库</div>
       </div>
       <div class="tbl-meta">
@@ -3634,7 +3634,7 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.cla
 
       var h = document.createElement('h2');
       h.id = 'verTitle';
-      h.textContent = '工具有新版本';
+      h.textContent = '系统有新版本';
 
       var p1 = document.createElement('p');
       p1.id = 'verDesc';
