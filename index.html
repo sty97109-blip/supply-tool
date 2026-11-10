@@ -730,7 +730,7 @@ input.fsel{width:100%;min-width:0;max-width:none}
         <span style="color:#dc2626;font-weight:600">⚠️ 备货请注意25年10-12月同期销量未估算断货损失销量！</span>
         <span><span class="mdot mdot-o"></span>可修改字段</span>
         <span><span class="mdot mdot-r"></span>风险SKU</span>
-        <span id="stockUpdateTime" style="font-size:12px;color:#999;margin-right:10px">在库库存更新时间：-</span>
+        <span id="stockUpdateTime" style="font-size:12px;color:#999;margin-right:10px">数据更新时间：-</span>
         <span id="totalCount">共 0 条</span>
       </div>
     </div>
@@ -2753,7 +2753,7 @@ function initSimpleMode(){
 function updateStockTimeDisplay(){
   const el=document.getElementById('stockUpdateTime');if(!el)return;
   const latest=allData.map(r=>r.stockUpdatedAt).filter(Boolean).sort().pop();
-  el.textContent='在库库存更新时间：'+(latest||'未更新');
+  el.textContent='数据更新时间：'+(latest||'未更新');
 }
 
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
