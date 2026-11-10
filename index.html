@@ -3384,5 +3384,152 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.cla
   <div id="br_result"></div>
 </div>
 
+
+<!-- ===== 使用埋点 v1（v5.24，独立模块，失败静默，不影响任何原有逻辑） ===== -->
+<script>
+(function(){
+  try{
+    var SB_URL = 'https://qewywdclyurpkjfecwfn.supabase.co';
+    var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFld3l3ZGNseXVycGtqZmVjd2ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2MDE4NDgsImV4cCI6MjEwMjE3Nzg0OH0.FwjV4LQwyFDUxo3YJWz_1GoKk-JCAYy886RZtzavANc';
+    var LS_CID = 'q4_supply_cid';
+    var cid = '';
+    try{ cid = localStorage.getItem(LS_CID) || ''; }catch(e){}
+    if(!cid){
+      cid = 'c_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36);
+      try{ localStorage.setItem(LS_CID, cid); }catch(e){}
+    }
+
+    function who(){
+      try{
+        return {
+          user: sessionStorage.getItem('q4_supply_user') || '',
+          planner: sessionStorage.getItem('q4_supply_planner') || '',
+          auth: sessionStorage.getItem('q4_supply_auth') || ''
+        };
+      }catch(e){ return {user:'', planner:'', auth:''}; }
+    }
+
+    function send(action, detail){
+      try{
+        var w = who();
+        var body = {
+          action: String(action).slice(0,40),
+          detail: String(detail == null ? '' : detail).slice(0,500),
+          client_id: cid,
+          user_name: w.user,
+          planner: w.planner,
+          role: w.auth ? 'in' : 'out',
+          ua: (navigator.userAgent || '').slice(0,220)
+        };
+        fetch(SB_URL + '/rest/v1/usage_log', {
+          method: 'POST',
+          headers: {
+            'apikey': SB_KEY,
+            'Authorization': 'Bearer ' + SB_KEY,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify(body),
+          keepalive: true
+        }).catch(function(){});
+      }catch(e){}
+    }
+    window.__track = send;
+
+    var t0 = Date.now();
+
+    // 1) 访问
+    send('visit', JSON.stringify({
+      w: (window.screen && screen.width) || 0,
+      h: (window.screen && screen.height) || 0,
+      mobile: /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent || '')
+    }));
+
+    // 2) 登录（轮询 sessionStorage，登录成功后上报一次）
+    var lastUser = '';
+    setInterval(function(){
+      var u = who().user;
+      if(u && u !== lastUser){
+        lastUser = u;
+        var w2 = who();
+        send('login', JSON.stringify({user: w2.user, planner: w2.planner}));
+      }
+    }, 2000);
+
+    // 3) 搜索（防抖 1.5 秒 + 同词去重）
+    var sTimer = null, lastKw = '';
+    document.addEventListener('input', function(e){
+      var t = e.target;
+      if(!t || t.id !== 'searchInput') return;
+      if(sTimer) clearTimeout(sTimer);
+      sTimer = setTimeout(function(){
+        var kw = (t.value || '').trim();
+        if(!kw || kw === lastKw) return;
+        lastKw = kw;
+        send('search', kw);
+      }, 1500);
+    }, true);
+
+    // 4) 关键按钮点击（事件委托，不绑定到具体元素）
+    var OC_MAP = [
+      ['calcAllocByDays(', 'alloc_by_days'],
+      ['calcAlloc(', 'alloc_calc'],
+      ['brCalc(', 'batch_calc'],
+      ['brExport(', 'batch_export'],
+      ["brTransfer('supply'", 'transfer_supply'],
+      ["brTransfer('overall'", 'transfer_overall'],
+      ['exportMine(', 'export_mine'],
+      ['openBatchReplen(', 'open_batch_replen'],
+      ['downloadTemplate(', 'download_template']
+    ];
+    document.addEventListener('click', function(e){
+      var el = e.target;
+      var guard = 0;
+      while(el && el !== document && guard++ < 12){
+        var oc = '';
+        try{ oc = (el.getAttribute && el.getAttribute('onclick')) || ''; }catch(x){}
+        if(oc){
+          for(var k = 0; k < OC_MAP.length; k++){
+            if(oc.indexOf(OC_MAP[k][0]) > -1){
+              send(OC_MAP[k][1], '');
+              return;
+            }
+          }
+        }
+        el = el.parentNode;
+      }
+    }, true);
+
+    // 5) 停留时长
+    window.addEventListener('beforeunload', function(){
+      try{
+        var sec = Math.round((Date.now() - t0) / 1000);
+        var w3 = who();
+        var body = {
+          action: 'leave',
+          detail: String(sec),
+          client_id: cid,
+          user_name: w3.user,
+          planner: w3.planner,
+          role: w3.auth ? 'in' : 'out',
+          ua: ''
+        };
+        fetch(SB_URL + '/rest/v1/usage_log', {
+          method: 'POST',
+          headers: {
+            'apikey': SB_KEY,
+            'Authorization': 'Bearer ' + SB_KEY,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify(body),
+          keepalive: true
+        }).catch(function(){});
+      }catch(e){}
+    });
+  }catch(e){}
+})();
+</script>
+<!-- ===== 使用埋点结束 ===== -->
 </body>
 </html>
