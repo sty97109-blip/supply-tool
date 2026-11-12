@@ -3655,7 +3655,28 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.cla
       btn.addEventListener('click', function(){
         btn.disabled = true;
         btn.textContent = '正在刷新…';
-        try{ location.reload(true); }catch(e){ location.reload(); }
+        var done = false;
+        function go(){
+          if(done) return;
+          done = true;
+          try{ location.reload(); }catch(e){ try{ location.href = location.href; }catch(x){} }
+        }
+        /* 先注销 Service Worker、清缓存再刷新，确保拿到最新版本；任一步失败或超时都直接刷新 */
+        try{
+          var tasks = [];
+          if(navigator.serviceWorker && navigator.serviceWorker.getRegistrations){
+            tasks.push(navigator.serviceWorker.getRegistrations().then(function(rs){
+              return Promise.all(rs.map(function(r){ return r.unregister(); }));
+            }));
+          }
+          if(window.caches && caches.keys){
+            tasks.push(caches.keys().then(function(ks){
+              return Promise.all(ks.map(function(k){ return caches.delete(k); }));
+            }));
+          }
+          if(!tasks.length){ go(); }
+          else { Promise.all(tasks).then(go).catch(go); setTimeout(go, 2000); }
+        }catch(e){ go(); }
       });
 
       box.appendChild(icon);
@@ -3678,10 +3699,11 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.cla
         }catch(x){}
       }, 1000);
 
-      /* 遮罩吞掉所有点击，不允许点空白关闭 */
-      mask.addEventListener('click', function(e){ e.stopPropagation(); e.preventDefault(); }, true);
-      mask.addEventListener('mousedown', function(e){ e.stopPropagation(); e.preventDefault(); }, true);
-      mask.addEventListener('touchstart', function(e){ e.stopPropagation(); }, true);
+      /* 遮罩吞掉所有点击，不允许点空白关闭；弹窗内容区必须放行，否则按钮收不到 click（v5.29 修） */
+      function inBox(e){ try{ return e.target === box || box.contains(e.target); }catch(x){ return false; } }
+      mask.addEventListener('click', function(e){ if(inBox(e)) return; e.stopPropagation(); e.preventDefault(); }, true);
+      mask.addEventListener('mousedown', function(e){ if(inBox(e)) return; e.stopPropagation(); e.preventDefault(); }, true);
+      mask.addEventListener('touchstart', function(e){ if(inBox(e)) return; e.stopPropagation(); }, true);
       mask.addEventListener('contextmenu', function(e){ e.preventDefault(); });
 
       /* 屏蔽 ESC / 回车以外的一切关闭途径 */
